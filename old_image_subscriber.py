@@ -11,10 +11,6 @@ class ImageSubscriber:
         self.info = {'l': None, 'r': None}
         self.bridge = cv_bridge.CvBridge()
         self.write = write
-        self.left_called = True
-        self.right_called = True
-        self.left_img_id = 0
-        self.right_img_id = 0
 
 
         #========SUBSCRIBERS========#
@@ -46,10 +42,8 @@ class ImageSubscriber:
             return
         self.right_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         if self.write:
-            if self.right_called:
-                self.right_img_id += 1
-                scipy.misc.imsave('right' + str(self.right_img_id) + '.jpg', self.right_image)
-                self.right_called = False
+            scipy.misc.imsave('right.jpg', self.right_image)
+
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -57,10 +51,7 @@ class ImageSubscriber:
         # rospy.sleep(.5)
         self.left_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         if self.write:
-            if self.left_called:
-                self.left_img_id += 1
-                scipy.misc.imsave('left' + str(self.left_img_id) + '.jpg', self.left_image)
-                self.left_called = False
+            scipy.misc.imsave('left.jpg', self.left_image)
 
 if __name__ == "__main__":
     a = ImageSubscriber(write=True)
