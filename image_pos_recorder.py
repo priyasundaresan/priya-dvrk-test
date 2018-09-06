@@ -30,38 +30,41 @@ import numpy as np
 import rospy
 import robot
 import image_subscriber
+import pprint
 
 def PSM1_callback():
     kdl_pose = psm1.get_current_position()
     x, y, z = kdl_pose.p.x(), kdl_pose.p.y(), kdl_pose.p.z()
     yaw, pitch, roll = np.array(kdl_pose.M.GetEulerZYX())
-    psm1_pts = np.array([x, y, z, yaw, pitch, roll])
-    #img_sub.right_called = True
-    #psm1_img_id = 'right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
-    psm1_img_id = 'right.jpg'
-    print_position(psm1_pts)
+    psm1_pts = [x, y, z, yaw, pitch, roll]
+    img_sub.right_called = True
+    psm1_img_id = 'right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
+    # psm1_img_id = 'right.jpg'
+    print_position(1, psm1_pts)
     export_position(psm1_file, psm1_pts, psm1_img_id)
 
 def PSM2_callback():
     kdl_pose = psm2.get_current_position()
     x, y, z = kdl_pose.p.x(), kdl_pose.p.y(), kdl_pose.p.z()
     yaw, pitch, roll = np.array(kdl_pose.M.GetEulerZYX())
-    psm2_pts = np.array([x, y, z, yaw, pitch, roll])
-    #img_sub.left_called = True
-    #psm2_img_id = 'left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
-    psm2_img_id = 'left.jpg'
-    print_position(psm2_pts)
+    psm2_pts = [x, y, z, yaw, pitch, roll]
+    img_sub.left_called = True
+    psm2_img_id = 'left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
+    # psm2_img_id = 'left.jpg'
+    print_position(2, psm2_pts)
     export_position(psm2_file, psm2_pts, psm2_img_id)
 
-def print_position(psm_pts):
+def print_position(psm, psm_pts):
     """ Prints formatted position parameters (x, y, z, yaw, pitch, roll) """
-    print('{0:<10} {1:<10} {2:<10} {3:<10} {4:<10} {5:<10}'.format('x', 'y', 'z', 'yaw', 'pitch', 'roll'))
-    print('{l[0]:<10} {l[1]:<10} {l[2]:<10} {l[3]:<10} {l[4]:<10} {l[5]:<10}'.format(l=psm_pts))
+    print("PSM" + str(psm))
+    pairs = zip(['x', 'y', 'z', 'yaw', 'pitch', 'roll'], psm_pts)
+    pprint.pprint(list(pairs))
+    print('---')
 
 def export_position(file_name, position, img_id):
     """ Writes the PSM position and corresponding latest image to memory """
     with open(file_name, 'a+') as f:
-        cache = {img_id: position}
+        cache = {img_id: dict(zip(['x', 'y', 'z', 'yaw', 'pitch', 'roll'], position))}
         f.write(str(cache) + '\n')
 
 class GUI:
@@ -90,6 +93,8 @@ if __name__ == '__main__':
     psm1 = robot.robot('PSM1')
     psm2 = robot.robot('PSM2')
 
+    img_sub = image_subscriber.ImageSubscriber(write=True)
+
     psm1_file = 'psm1_recordings.txt'
     psm2_file = 'psm2_recordings.txt'
 
@@ -100,5 +105,4 @@ if __name__ == '__main__':
     gui = GUI(root)
     root.mainloop()
 
-    # img_sub = image_subscriber.ImageSubscriber(write=True)
-    # rospy.spin()
+    
