@@ -11,15 +11,14 @@ class ImageSubscriber:
         self.info = {'l': None, 'r': None}
         self.bridge = cv_bridge.CvBridge()
         self.write = write
-        self.left_called = True
-        self.right_called = True
+        self.left_called = False
+        self.right_called = False
         self.left_img_id = 0
         self.right_img_id = 0
 
 
         #========SUBSCRIBERS========#
         # image subscribers
-        rospy.init_node('image_saver', anonymous=True)
         rospy.Subscriber("/endoscope/left/image_rect_color", Image,
                          self.left_image_callback)
         rospy.Subscriber("/endoscope/right/image_rect_color", Image,
@@ -47,8 +46,8 @@ class ImageSubscriber:
         self.right_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         if self.write:
             if self.right_called:
-                self.right_img_id += 1
                 scipy.misc.imsave('right' + str(self.right_img_id) + '.jpg', self.right_image)
+                self.right_img_id += 1
                 self.right_called = False
 
     def left_image_callback(self, msg):
@@ -58,8 +57,8 @@ class ImageSubscriber:
         self.left_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
         if self.write:
             if self.left_called:
-                self.left_img_id += 1
                 scipy.misc.imsave('left' + str(self.left_img_id) + '.jpg', self.left_image)
+                self.left_img_id += 1
                 self.left_called = False
 
 if __name__ == "__main__":
