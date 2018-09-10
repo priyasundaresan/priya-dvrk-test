@@ -27,6 +27,7 @@ camera of the endoscope and the PSM's corresponding positions in those images.
 from Tkinter import Tk, Label, Button
 import dvrk
 import numpy as np
+import pickle
 import rospy
 import robot
 import image_subscriber
@@ -60,9 +61,11 @@ def print_position(psm_pts):
 
 def export_position(file_name, position, img_id):
     """ Writes the PSM position and corresponding latest image to memory """
-    with open(file_name, 'a+') as f:
-        cache = {img_id: position}
-        f.write(str(cache) + '\n')
+    cache = {img_id: position}
+    pickle.dump(cache, open(file_name, 'ab'))
+    # with open(file_name, 'a+') as f:
+    #     cache = {img_id: position}
+    #     f.write(str(cache) + '\n')
 
 class GUI:
     def __init__(self, master):
