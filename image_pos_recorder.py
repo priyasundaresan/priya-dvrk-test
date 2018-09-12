@@ -101,8 +101,8 @@ if __name__ == '__main__':
     psm1_file = 'psm1_recordings.txt'
     psm2_file = 'psm2_recordings.txt'
 
-    open(psm1_file, 'w').close()
-    open(psm2_file, 'w').close()
+    open(psm1_file, 'wb').close()
+    open(psm2_file, 'wb').close()
 
     root = Tk()
     gui = GUI(root)
