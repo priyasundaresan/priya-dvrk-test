@@ -39,7 +39,6 @@ def PSM1_callback():
     psm1_pts = [x, y, z, yaw, pitch, roll]
     img_sub.right_called = True
     psm1_img_id = 'right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
-    # psm1_img_id = 'right.jpg'
     print_position(1, psm1_pts)
     export_position(psm1_file, psm1_pts, psm1_img_id)
 
@@ -50,7 +49,6 @@ def PSM2_callback():
     psm2_pts = [x, y, z, yaw, pitch, roll]
     img_sub.left_called = True
     psm2_img_id = 'left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
-    # psm2_img_id = 'left.jpg'
     print_position(2, psm2_pts)
     export_position(psm2_file, psm2_pts, psm2_img_id)
 
@@ -72,7 +70,7 @@ class GUI:
 
         self.master = master
         master.title("DVRK Pose/Image Recorder")
-        master.geometry('400x200')
+        master.geometry('400x150')
 
         text = """Press below to record a PSM's current position
         and corresponding latest image to memory"""
