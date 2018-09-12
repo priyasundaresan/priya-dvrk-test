@@ -41,7 +41,7 @@ def PSM1_callback():
     img_sub.right_called = True
     psm1_img_id = 'right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
     print_position(1, psm1_pts)
-    export_position(psm1_file, psm1_pts, psm1_img_id)
+    np.save('registration/psm1_pts.npy', np.array(psm1_pts))
 
 def PSM2_callback():
     kdl_pose = psm2.get_current_position()
@@ -51,7 +51,7 @@ def PSM2_callback():
     img_sub.left_called = True
     psm2_img_id = 'left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
     print_position(2, psm2_pts)
-    export_position(psm2_file, psm2_pts, psm2_img_id)
+    np.save('registration/psm2_pts.npy', np.array(psm2_pts))
 
 def print_position(psm, psm_pts):
     """ Prints formatted position parameters (x, y, z, yaw, pitch, roll) """
@@ -60,13 +60,13 @@ def print_position(psm, psm_pts):
     pprint.pprint(list(pairs))
     print('---')
 
-def export_position(file_name, position, img_id):
-    """ Writes the PSM position and corresponding latest image to memory """
-    cache = {img_id: dict(zip(['x', 'y', 'z', 'yaw', 'pitch', 'roll'], position))}
-    pickle.dump(cache, open(file_name, 'ab'))
-    # with open(file_name, 'a+') as f:
-    #     cache = {img_id: position}
-    #     f.write(str(cache) + '\n')
+# def export_position(file_name, position, img_id):
+#     """ Writes the PSM position and corresponding latest image to memory """
+#     cache = {img_id: dict(zip(['x', 'y', 'z', 'yaw', 'pitch', 'roll'], position))}
+#     pickle.dump(cache, open(file_name, 'ab'))
+#     # with open(file_name, 'a+') as f:
+#     #     cache = {img_id: position}
+#     #     f.write(str(cache) + '\n')
 
 class GUI:
     def __init__(self, master):
@@ -96,11 +96,11 @@ if __name__ == '__main__':
 
     img_sub = image_subscriber.ImageSubscriber(write=True)
 
-    psm1_file = 'psm1_recordings.txt'
-    psm2_file = 'psm2_recordings.txt'
+    # psm1_file = 'psm1_recordings.txt'
+    # psm2_file = 'psm2_recordings.txt'
 
-    open(psm1_file, 'wb').close()
-    open(psm2_file, 'wb').close()
+    # open(psm1_file, 'wb').close()
+    # open(psm2_file, 'wb').close()
 
     root = Tk()
     gui = GUI(root)
