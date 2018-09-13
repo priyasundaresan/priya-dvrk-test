@@ -28,14 +28,12 @@ def solve_for_rigid_transformation(inpts, outpts):
     assert inpts.shape == outpts.shape
     inpts, outpts = np.copy(inpts), np.copy(outpts)
     inpt_mean = inpts.mean(axis=0)
-    print('Mean', inpt_mean)
     outpt_mean = outpts.mean(axis=0)
     outpts -= outpt_mean
     inpts -= inpt_mean
     X = inpts.T
     Y = outpts.T
     covariance = np.dot(X, Y.T)
-    print('Covariance', covariance.shape)
     U, s, V = np.linalg.svd(covariance)
     S = np.diag(s)
     assert np.allclose(covariance, np.dot(U, np.dot(S, V)))
@@ -84,19 +82,18 @@ def get_good_indices(thresh=0.022):
 
 if __name__ == '__main__':
 
-    psm1_pts = np.load("registration/psm1_pts.npy")
-    psm2_pts = np.load("registration/psm2_pts.npy")
-    print("Load PSM1 Points:", psm1_pts)
-    print("Load PSM2 Points:", psm2_pts)
+    psm1_pts = np.load("correspondences/psm1_board_1.npy")[:,:3]
+    psm2_pts = np.load("correspondences/psm2_board_1.npy")[:,:3]
     transform1 = solve_for_rigid_transformation(psm1_pts, psm2_pts)
-    # print("Matrix for PSM1 -> PSM2", transform1)
-    # np.save("PSM1_to_PSM2.npy", transform1)
+    print(transform1)
+    np.save("PSM1_to_PSM2.npy", transform1)
 
-    # transform2 = solve_for_rigid_transformation(psm2_pts, psm1_pts)
-    # print(transform2)
-    # print("Matrix for PSM2 -> PSM1", transform2)
-    # np.save("PSM2_to_PSM1.npy", transform2)
+    psm1_pts = np.load("correspondences/psm1_board_1.npy")[:,:3]
+    psm2_pts = np.load("correspondences/psm2_board_1.npy")[:,:3]
+    transform2 = solve_for_rigid_transformation(psm2_pts, psm1_pts)
+    print(transform2)
+    np.save("PSM2_to_PSM1.npy", transform2)
 
-    # e1 =  np.mean([np.linalg.norm(p2 - transform_point(p1, transform1)) for p1, p2 in zip(psm1_pts, psm2_pts)])
-    # e2 =  np.mean([np.linalg.norm(p1 - transform_point(p2, transform2)) for p1, p2 in zip(psm1_pts, psm2_pts)])
-    # print(e1, e2)
+    e1 =  np.mean([np.linalg.norm(p2 - transform_point(p1, transform1)) for p1, p2 in zip(psm1_pts, psm2_pts)])
+    e2 =  np.mean([np.linalg.norm(p1 - transform_point(p2, transform2)) for p1, p2 in zip(psm1_pts, psm2_pts)])
+    print(e1, e2)

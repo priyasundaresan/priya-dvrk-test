@@ -64,9 +64,6 @@ def export_position(file_name, position, img_id):
     """ Writes the PSM position and corresponding latest image to memory """
     cache = {img_id: dict(zip(['x', 'y', 'z', 'yaw', 'pitch', 'roll'], position))}
     pickle.dump(cache, open(file_name, 'ab'))
-    # with open(file_name, 'a+') as f:
-    #     cache = {img_id: position}
-    #     f.write(str(cache) + '\n')
 
 class GUI:
     def __init__(self, master):
