@@ -8,6 +8,7 @@ import rospy, scipy.misc
 from sensor_msgs.msg import Image, CameraInfo
 import pickle
 import sys
+import pprint
 
 
 USE_SAVED_IMAGES = False
@@ -15,7 +16,6 @@ USE_SAVED_IMAGES = False
 """
 This script detects chessboard corners from the endoscope cameras. It writes the points to calibration_data/endoscope_points.
 """
-
 
 def convertStereo(u, v, disparity, info=None):
     """

@@ -28,7 +28,6 @@ def solve_for_rigid_transformation(inpts, outpts):
     assert inpts.shape == outpts.shape
     inpts, outpts = np.copy(inpts), np.copy(outpts)
     inpt_mean = inpts.mean(axis=0)
-    print(inpt_mean)
     outpt_mean = outpts.mean(axis=0)
     outpts -= outpt_mean
     inpts -= inpt_mean
@@ -52,7 +51,6 @@ def least_squares_plane_normal(points_3d):
     x_list = points_3d[:,0]
     y_list = points_3d[:,1]
     z_list = points_3d[:,2]
-
     A = np.concatenate((x_list, y_list, np.ones((len(x_list), 1))), axis=1)
     plane = np.matrix(np.linalg.lstsq(A, z_list)[0]).T
 
