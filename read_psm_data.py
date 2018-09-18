@@ -44,16 +44,15 @@ def error(m1, m2):
 
 if __name__ == '__main__':
 
-    psm1_data = list(load_all('psm_test_recordings/psm1_recordings.txt'))
-    psm2_data = list(load_all('psm_test_recordings/psm2_recordings.txt'))
-    endoscope_data = np.matrix(list(read_chessboard_data.load_all('camera_data/endoscope_chesspts.p'))[0])
-    pprint.pprint(endoscope_data)
+    psm1_data = list(load_all('psm_test_recording2/psm1_recordings.txt'))
+    psm2_data = list(load_all('psm_test_recording2/psm2_recordings.txt'))
 
     # print_psm_cache(psm1_data, 'PSM1 DATA')
     # print_psm_cache(psm2_data, 'PSM2 DATA')
 
     psm1_matrix = psm_data_to_matrix(psm1_data)
     psm2_matrix = psm_data_to_matrix(psm2_data)
+    endoscope_matrix = np.matrix(list(read_chessboard_data.load_all('camera_data/endoscope_chesspts.p'))[0])
 
 
     print("\nPSM1 --> PSM2 Transform Matrix")
@@ -64,25 +63,48 @@ if __name__ == '__main__':
     T2_1 = rigid_transform_test.solve_for_rigid_transformation(psm2_matrix, psm1_matrix)
     print(T2_1)
 
+    print("\nPSM1 --> Endoscope Transform Matrix")
+    T1_E = rigid_transform_test.solve_for_rigid_transformation(psm1_matrix, endoscope_matrix)
+    print(T1_E)
+
+    print("\nPSM2 --> Endoscope Transform Matrix")
+    T2_E = rigid_transform_test.solve_for_rigid_transformation(psm2_matrix, endoscope_matrix)
+    print(T2_E)
+
     print('\nTransforming PSM1 --> PSM2')
     print('            x           y           z')
     psm1_2 = transform_matrix(psm1_matrix, T1_2)
     print(psm1_2)
     print('Actual PSM2 Data')
     print('            x           y           z')
-    print(psm_data_to_matrix(psm2_data))
+    print(psm2_matrix)
     print('Associated Error:', error(psm1_2, psm2_matrix))
 
-    
-    
+    # print('\nTransforming PSM2 --> PSM1')
+    # print('            x           y           z')
+    # psm2_1 = transform_matrix(psm2_matrix, T2_1)
+    # print(psm2_1)
+    # print('Actual PSM1 Data')
+    # print('            x           y           z')
+    # print(psm1_matrix)
+    # print('Associated Error:', error(psm2_1, psm1_matrix))
 
-    print('\nTransforming PSM2 --> PSM1')
+    print('\nTransforming PSM1 --> Endoscope')
     print('            x           y           z')
-    psm2_1 = transform_matrix(psm2_matrix, T2_1)
-    print(psm2_1)
-    print('Actual PSM1 Data')
+    psm1_e = transform_matrix(psm1_matrix, T1_E)
+    print(psm1_e)
+    print('Actual Endoscope Data')
     print('            x           y           z')
-    print(psm_data_to_matrix(psm1_data))
-    print('Associated Error:', error(psm2_1, psm1_matrix))
+    print(endoscope_matrix)
+    print('Associated Error:', error(psm1_e, endoscope_matrix))
+
+    print('\nTransforming PSM2 --> Endoscope')
+    print('            x           y           z')
+    psm2_e = transform_matrix(psm2_matrix, T2_E)
+    print(psm2_e)
+    print('Actual Endoscope Data')
+    print('            x           y           z')
+    print(endoscope_matrix)
+    print('Associated Error:', error(psm2_e, endoscope_matrix))
 
     
