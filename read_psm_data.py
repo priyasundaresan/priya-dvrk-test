@@ -2,6 +2,7 @@ import pickle
 import pprint
 import numpy as np
 import rigid_transform_test
+import read_chessboard_data
 
 def load_all(filename):
     with open(filename, 'rb') as f:
@@ -17,7 +18,7 @@ def print_psm_cache(lst, heading):
     pprint.pprint(lst)
     print('\n')
 
-def data_to_matrix(cache):
+def psm_data_to_matrix(cache):
     i = 0
     matrix = np.matrix(np.zeros(shape=(len(cache), 3)))
     for pair in cache:
@@ -43,14 +44,17 @@ def error(m1, m2):
 
 if __name__ == '__main__':
 
-    psm1_data = list(load_all('psm1_recordings.txt'))
-    psm2_data = list(load_all('psm2_recordings.txt'))
+    psm1_data = list(load_all('psm_test_recordings/psm1_recordings.txt'))
+    psm2_data = list(load_all('psm_test_recordings/psm2_recordings.txt'))
+    endoscope_data = np.matrix(list(read_chessboard_data.load_all('camera_data/endoscope_chesspts.p'))[0])
+    pprint.pprint(endoscope_data)
 
     # print_psm_cache(psm1_data, 'PSM1 DATA')
     # print_psm_cache(psm2_data, 'PSM2 DATA')
 
-    psm1_matrix = data_to_matrix(psm1_data)
-    psm2_matrix = data_to_matrix(psm2_data)
+    psm1_matrix = psm_data_to_matrix(psm1_data)
+    psm2_matrix = psm_data_to_matrix(psm2_data)
+
 
     print("\nPSM1 --> PSM2 Transform Matrix")
     T1_2 = rigid_transform_test.solve_for_rigid_transformation(psm1_matrix, psm2_matrix)
@@ -66,8 +70,11 @@ if __name__ == '__main__':
     print(psm1_2)
     print('Actual PSM2 Data')
     print('            x           y           z')
-    print(data_to_matrix(psm2_data))
+    print(psm_data_to_matrix(psm2_data))
     print('Associated Error:', error(psm1_2, psm2_matrix))
+
+    
+    
 
     print('\nTransforming PSM2 --> PSM1')
     print('            x           y           z')
@@ -75,7 +82,7 @@ if __name__ == '__main__':
     print(psm2_1)
     print('Actual PSM1 Data')
     print('            x           y           z')
-    print(data_to_matrix(psm1_data))
+    print(psm_data_to_matrix(psm1_data))
     print('Associated Error:', error(psm2_1, psm1_matrix))
 
     
