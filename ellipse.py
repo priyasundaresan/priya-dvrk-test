@@ -68,7 +68,16 @@ class EllipseDetector:
         thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        processed = cv2.drawContours(self.left_image, contours, -1, (0, 255, 0), 3)
+        for c in contours:
+            M = cv2.moments(c)
+            if int(M["m00"]) != 0:
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 2)
+                cv2.circle(self.left_image, (cX, cY), 7, (255, 0, 0), -1)
+                # cv2.putText(self.left_image, "center", (cX - 20, cY - 20),
+                # cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            processed = cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 3)
         scipy.misc.imsave('camera_data/fitted_image.jpg', processed)
         
 if __name__ == "__main__":
