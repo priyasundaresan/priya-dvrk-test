@@ -64,13 +64,12 @@ class EllipseDetector:
     def process_image(self):
         print "processing image"
         inverted = cv2.bitwise_not(cv2.cvtColor(self.left_image, cv2.COLOR_BGR2GRAY))
-        blurred = cv2.GaussianBlur(inverted, (5, 5), 0)
-        thresh = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)[1]
+        scipy.misc.imsave('camera_data/inverted.jpg', inverted)
+        thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY)[1]
+        scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print(np.array(contours), type(contours))
-        ellipse = cv2.fitEllipse(contours)
-        left_image_annotated = cv2.ellipse(thresh, ellipse, (0, 255, 0), 2)
-        scipy.misc.imsave('camera_data/fitted_image.jpg', left_image_annotated)
+        processed = cv2.drawContours(self.left_image, contours, -1, (0, 255, 0), 3)
+        scipy.misc.imsave('camera_data/fitted_image.jpg', processed)
         
 if __name__ == "__main__":
     a = EllipseDetector()
