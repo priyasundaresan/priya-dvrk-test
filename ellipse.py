@@ -71,7 +71,7 @@ class EllipseDetector:
         ellipse = cv2.fitEllipse(contours)
         left_image_annotated = cv2.ellipse(thresh, ellipse, (0, 255, 0), 2)
         scipy.misc.imsave('camera_data/fitted_image.jpg', left_image_annotated)
-        
+
 if __name__ == "__main__":
     a = EllipseDetector()
     rospy.spin()
