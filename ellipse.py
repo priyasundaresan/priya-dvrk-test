@@ -60,6 +60,8 @@ class EllipseDetector:
         if self.right_image != None:
             self.process_image()
 
+    def closest_to_centroid(contour_points, cX, cY):
+        return min(contour_points, key=lambda c: cv2.pointPolygonTest(c,(cX,cY),True))
 
     def process_image(self):
         print "processing image"
@@ -70,13 +72,16 @@ class EllipseDetector:
         im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             M = cv2.moments(c)
-            if int(M["m00"]) != 0:
+            area = cv2.contourArea(c)
+            if int(M["m00"]) != 0 and area > 200:
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
+                # closest = self.closest_to_centroid(c, cX, cY)
+                test = np.vstack(c).squeeze()
+                print(test)
                 cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 2)
                 cv2.circle(self.left_image, (cX, cY), 7, (255, 0, 0), -1)
-                # cv2.putText(self.left_image, "center", (cX - 20, cY - 20),
-                # cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.putText(self.left_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             processed = cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 3)
         scipy.misc.imsave('camera_data/fitted_image.jpg', processed)
 
