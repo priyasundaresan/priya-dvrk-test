@@ -44,15 +44,15 @@ def error(m1, m2):
 
 if __name__ == '__main__':
 
-    psm1_data = list(load_all('psm_test_recording2/psm1_recordings.txt'))
-    psm2_data = list(load_all('psm_test_recording2/psm2_recordings.txt'))
+    psm1_data = list(load_all('calibration/psm1_recordings.txt'))
+    psm2_data = list(load_all('calibration/psm2_recordings.txt'))
 
     # print_psm_cache(psm1_data, 'PSM1 DATA')
     # print_psm_cache(psm2_data, 'PSM2 DATA')
 
     psm1_matrix = psm_data_to_matrix(psm1_data)
     psm2_matrix = psm_data_to_matrix(psm2_data)
-    endoscope_matrix = np.matrix(list(read_chessboard_data.load_all('camera_data/endoscope_chesspts.p'))[0])
+    endoscope_matrix = np.matrix(list(read_chessboard_data.load_all('calibration/endoscope_chesspts.p'))[0])
 
 
     # print("\nPSM1 --> PSM2 Transform Matrix")
