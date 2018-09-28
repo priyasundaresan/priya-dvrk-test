@@ -6,12 +6,20 @@ import read_psm_data
 import read_chessboard_data
 import rigid_transform_test
 import time
+import math 
+
+
 
 
 if __name__ == '__main__':
 	psm2 = robot.robot('PSM2')
-	# kdl_pose = psm2.get_current_position()
-	# pprint.pprint(kdl_pose)
+	kdl_pose = psm2.get_current_position()
+	pprint.pprint(kdl_pose)
+
+	# f2 = PyKDL.Frame(PyKDL.Rotation.RPY(-0.5,0.5,1), kdl_pose.p)
+	# pprint.pprint(f2)
+
+	# psm2.move(f2)
 
 	psm2_calibration_data = list(read_psm_data.load_all('calibration/psm2_recordings.txt'))
 	psm2_calibration_matrix = read_psm_data.psm_data_to_matrix(psm2_calibration_data)
@@ -30,7 +38,7 @@ if __name__ == '__main__':
 	print('Associated Error:', read_psm_data.error(psme_2, psm2_calibration_matrix))
 
 	# Test moving the PSM to unseen points (the first row of the chessboard, in this case)
-	for point in psme_2.tolist()[:5]:
+	for point in psme_2.tolist()[5:11]:
 		print(point)
 		psm2.move(PyKDL.Vector(point[0], point[1], point[2]))
 		time.sleep(.5)
