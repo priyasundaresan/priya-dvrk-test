@@ -67,7 +67,6 @@ class EllipseDetector:
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
     def process_image(self):
-        # print "processing image"
         inverted = cv2.bitwise_not(cv2.cvtColor(self.left_image, cv2.COLOR_BGR2GRAY))
         scipy.misc.imsave('camera_data/inverted.jpg', inverted)
         thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY)[1]
