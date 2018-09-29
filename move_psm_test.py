@@ -16,11 +16,6 @@ if __name__ == '__main__':
 	kdl_pose = psm2.get_current_position()
 	pprint.pprint(kdl_pose)
 
-	# f2 = PyKDL.Frame(PyKDL.Rotation.RPY(-0.5,0.5,1), kdl_pose.p)
-	# pprint.pprint(f2)
-
-	# psm2.move(f2)
-
 	psm2_calibration_data = list(read_psm_data.load_all('calibration/psm2_recordings.txt'))
 	psm2_calibration_matrix = read_psm_data.psm_data_to_matrix(psm2_calibration_data)
 	endoscope_calibration_matrix = np.matrix(list(read_chessboard_data.load_all('calibration/endoscope_chesspts.p'))[0])
@@ -38,7 +33,7 @@ if __name__ == '__main__':
 	print('Associated Error:', read_psm_data.error(psme_2, psm2_calibration_matrix))
 
 	# Test moving the PSM to unseen points (the first row of the chessboard, in this case)
-	for point in psme_2.tolist()[:15]:
+	for point in psme_2.tolist()[:10]:
 		print(point)
 		psm2.move(PyKDL.Vector(point[0], point[1], point[2]))
 		time.sleep(.5)

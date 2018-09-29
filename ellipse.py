@@ -66,7 +66,7 @@ class EllipseDetector:
         #     self.process_image()
 
     def closest_to_centroid(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
+        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY), True)))
 
     # Working now
     def process_image(self):
@@ -82,10 +82,9 @@ class EllipseDetector:
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
                 closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
-                # squeezed = np.vstack(c).squeeze()
                 print('\nContour Detected')
-                print('Centroid', cX, cY)
-                print('Closest Point', closest[0], closest[1])
+                print('Centroid', (cX, cY))
+                print('Closest Point', (closest[0], closest[1]))
                 cv2.drawContours(self.right_image, [c], -1, (0, 255, 0), 2)
                 cv2.circle(self.right_image, (cX, cY), 7, (255, 0, 0), -1)
                 cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
