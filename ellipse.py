@@ -51,6 +51,8 @@ class EllipseDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        if self.left_image != None:
+            self.process_image()
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -60,14 +62,15 @@ class EllipseDetector:
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             scipy.misc.imsave('camera_data/unfitted_image.jpg', self.left_image)
-        if self.right_image != None:
-            self.process_image()
+        # if self.right_image != None:
+        #     self.process_image()
 
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
+    # Working now
     def process_image(self):
-        inverted = cv2.bitwise_not(cv2.cvtColor(self.left_image, cv2.COLOR_BGR2GRAY))
+        inverted = cv2.bitwise_not(cv2.cvtColor(self.right_image, cv2.COLOR_BGR2GRAY))
         scipy.misc.imsave('camera_data/inverted.jpg', inverted)
         thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
@@ -83,14 +86,22 @@ class EllipseDetector:
                 print('\nContour Detected')
                 print('Centroid', cX, cY)
                 print('Closest Point', closest[0], closest[1])
-                cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 2)
-                cv2.circle(self.left_image, (cX, cY), 7, (255, 0, 0), -1)
-                cv2.putText(self.left_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                cv2.circle(self.left_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
+                cv2.drawContours(self.right_image, [c], -1, (0, 255, 0), 2)
+                cv2.circle(self.right_image, (cX, cY), 7, (255, 0, 0), -1)
+                cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.circle(self.right_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
 
-        scipy.misc.imsave('camera_data/fitted_image.jpg', self.left_image)
+        scipy.misc.imsave('camera_data/fitted_image.jpg', self.right_image)
 
         
 if __name__ == "__main__":
     a = EllipseDetector()
-    rospy.spin()
+    while 1:
+        frame = a.right_image
+        if frame is None:
+            continue
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+    # rospy.spin()
