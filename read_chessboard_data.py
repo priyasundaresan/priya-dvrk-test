@@ -19,9 +19,9 @@ def print_cache(lst, heading):
 
 if __name__ == '__main__':
 	endoscope_chesspts = list(load_all('camera_data/endoscope_chesspts.p'))
-	camera_info = list(load_all('camera_data/camera_info.p'))
-	left_chesspts = list(load_all('camera_data/left_chesspts'))
-	right_chesspts = list(load_all('camera_data/right_chesspts'))
+	# camera_info = list(load_all('camera_data/camera_info.p'))
+	# left_chesspts = list(load_all('camera_data/left_chesspts'))
+	# right_chesspts = list(load_all('camera_data/right_chesspts'))
 	print_cache(endoscope_chesspts, "ENDOSCOPE CHESSPOINTS")
 	# print_cache(camera_info, "CAMERA INFO")
 	# print(type(left_chesspts))

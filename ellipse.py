@@ -6,6 +6,7 @@ import cv_bridge
 import numpy as np
 import rospy, scipy.misc
 from sensor_msgs.msg import Image, CameraInfo
+import time
 
 USE_SAVED_IMAGES = False
 
@@ -17,6 +18,8 @@ class EllipseDetector:
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
+        self.area_lower_bound = 300
+        self.area_upper_bound = 40000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -60,9 +63,10 @@ class EllipseDetector:
         if self.right_image != None:
             self.process_image()
 
+    def closest_to_centroid(self, contour_points, cX, cY):
+        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
     def process_image(self):
-        print "processing image"
         inverted = cv2.bitwise_not(cv2.cvtColor(self.left_image, cv2.COLOR_BGR2GRAY))
         scipy.misc.imsave('camera_data/inverted.jpg', inverted)
         thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY)[1]
@@ -70,16 +74,23 @@ class EllipseDetector:
         im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             M = cv2.moments(c)
-            if int(M["m00"]) != 0:
+            area = cv2.contourArea(c)
+            if int(M["m00"]) != 0 and (self.area_lower_bound < area < self.area_upper_bound):
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
+                closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
+                # squeezed = np.vstack(c).squeeze()
+                print('\nContour Detected')
+                print('Centroid', cX, cY)
+                print('Closest Point', closest[0], closest[1])
                 cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 2)
                 cv2.circle(self.left_image, (cX, cY), 7, (255, 0, 0), -1)
-                # cv2.putText(self.left_image, "center", (cX - 20, cY - 20),
-                # cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            processed = cv2.drawContours(self.left_image, [c], -1, (0, 255, 0), 3)
-        scipy.misc.imsave('camera_data/fitted_image.jpg', processed)
+                cv2.putText(self.left_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.circle(self.left_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
 
+        scipy.misc.imsave('camera_data/fitted_image.jpg', self.left_image)
+
+        
 if __name__ == "__main__":
     a = EllipseDetector()
     rospy.spin()
