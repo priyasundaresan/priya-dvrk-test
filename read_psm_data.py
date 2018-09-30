@@ -4,6 +4,13 @@ import numpy as np
 import rigid_transform_test
 import read_chessboard_data
 
+"""NOTE: PSM2 RECORDED IN THIS POSE:
+[[   -0.988883, -0.00205771,   -0.148682;
+  -0.00509171,    0.999786,   0.0200282;
+     0.148609,   0.0205626,   -0.988682]
+[   -0.128112,    0.021001,   -0.124348]]
+"""
+
 def load_all(filename):
     with open(filename, 'rb') as f:
         while True:
@@ -44,13 +51,13 @@ def error(m1, m2):
 
 if __name__ == '__main__':
 
-    psm1_data = list(load_all('calibration/psm1_recordings.txt'))
+    # psm1_data = list(load_all('calibration/psm1_recordings.txt'))
     psm2_data = list(load_all('calibration/psm2_recordings.txt'))
 
     # print_psm_cache(psm1_data, 'PSM1 DATA')
     # print_psm_cache(psm2_data, 'PSM2 DATA')
 
-    psm1_matrix = psm_data_to_matrix(psm1_data)
+    # psm1_matrix = psm_data_to_matrix(psm1_data)
     psm2_matrix = psm_data_to_matrix(psm2_data)
     endoscope_matrix = np.matrix(list(read_chessboard_data.load_all('calibration/endoscope_chesspts.p'))[0])
 
