@@ -14,26 +14,31 @@ import math
 if __name__ == '__main__':
 
 	psm2 = robot.robot('PSM2')
-	kdl_pose = psm2.get_current_position()
-	print("Current Pose:")
+	kdl_pose = psm2.get_current_position().p
+	print("Current Position:")
 	pprint.pprint(kdl_pose)
 
-	z_limit = -0.124247
+	z_start = -0.111688
+	z_middle = -0.115
+	z_limit = -0.1233
 	
-	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.121688)
-
-	#ROTATION PSM2 WAS CALIBRATED IN
+	#POSE PSM2 WAS CALIBRATED IN
+	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
 	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
 
-	# start = PyKDL.Frame(rot, pos)
-	# psm2.move(start)
-	# time.sleep(2)
-	# psm2.close_jaw()
-	
+	start = PyKDL.Frame(rot, pos)
 
-	z_offset = PyKDL.Vector(0, 0, 0.005)
+	print("Moving to start position")
+	
+	psm2.open_jaw()
+	time.sleep(.5)
+	psm2.move(start)
+	time.sleep(.5)
+	psm2.close_jaw()
+	time.sleep(.5)
+
 
 	psm2_calibration_data = list(read_psm_data.load_all('calibration/psm2_recordings.txt'))
 	psm2_calibration_matrix = read_psm_data.psm_data_to_matrix(psm2_calibration_data)
@@ -49,11 +54,21 @@ if __name__ == '__main__':
 	print(needle_to_psm2)
 
 	# Test moving the PSM to needle centers
-	# for point in needle_to_psm2.tolist()[:1]:
-	# 	print(point)
-	# 	psm2.move(PyKDL.Vector(point[0], point[1], max(z_limit, point[2])))
-	# 	time.sleep(.25)
-	# 	psm2.dmove(z_offset)
-	# 	time.sleep(.25)
+	for point in needle_to_psm2.tolist():
+		print("Moving to", point)
+		psm2.move(PyKDL.Vector(point[0], point[1], z_start))
+		time.sleep(.5)
+		psm2.open_jaw()
+		print("Lowering...")
+		time.sleep(.25)
+		psm2.move(PyKDL.Vector(point[0], point[1], z_limit))
+		time.sleep(.25)
+		print("Grasping...")
+		psm2.close_jaw()
+		time.sleep(.25)
+		psm2.move(PyKDL.Vector(point[0], point[1], z_middle))
+		time.sleep(.25)
+		psm2.open_jaw()
+		time.sleep(.25)
 
 
