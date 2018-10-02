@@ -15,7 +15,7 @@ USE_SAVED_IMAGES = False
 
 def convertStereo(u, v, disparity, info=None):
     """
-    Converts two pixel coordinates u and v along with the disparity to give PointStamped       
+    Converts two pixel coordinates u and v along with the disparity to give PointStamped
     """
     stereoModel = image_geometry.StereoCameraModel()
     if info is None:
@@ -156,8 +156,6 @@ class EllipseDetector:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
 
-
-        
 if __name__ == "__main__":
     a = EllipseDetector()
     while 1:
