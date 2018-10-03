@@ -116,10 +116,11 @@ class EllipseDetector:
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY), True)))
 
-    def annotate(self, image, cX, cY, true_center, contours):
+    def annotate(self, image, cX, cY, true_center, contours, area):
         print('\nContour Detected')
         print('Centroid', (cX, cY))
         print('Closest Point', true_center)
+        print('Area', area)
         cv2.drawContours(image, contours, -1, (0, 255, 0), 2)
         cv2.circle(image, (cX, cY), 7, (255, 0, 0), -1)
         cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
@@ -144,7 +145,7 @@ class EllipseDetector:
                     true_center = (closest[0], closest[1])
                     if image is self.left_image:
                         left.append(true_center)
-                        self.annotate(image, cX, cY, true_center, [c])
+                        self.annotate(image, cX, cY, true_center, [c], area)
                         scipy.misc.imsave('camera_data/fitted_image.jpg', image)
                     else:
                         right.append(true_center)
@@ -153,6 +154,7 @@ class EllipseDetector:
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
             pprint.pprint(self.pts)
             with open('needle_data/needle_points.p', "w+") as f:
+                print("Found")
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
 
