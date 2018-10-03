@@ -31,7 +31,6 @@ if __name__ == '__main__':
 	start = PyKDL.Frame(rot, pos)
 
 	print("Moving to start position")
-	
 	psm2.open_jaw()
 	time.sleep(.5)
 	psm2.move(start)
