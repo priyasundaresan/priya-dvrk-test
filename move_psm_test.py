@@ -65,7 +65,8 @@ if __name__ == '__main__':
 	""" Where PSM2 touches the platform """
 	z_lower = -0.1233
 
-	""" POSE PSM2 WAS CALIBRATED IN """	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
+	""" POSE PSM2 WAS CALIBRATED IN """
+	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
 	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
