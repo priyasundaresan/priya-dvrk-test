@@ -151,12 +151,15 @@ class EllipseDetector:
                         right.append(true_center)
         if len(left) == len(right) and len(left) > 0 and len(right) > 0:
             pts3d = self.get_points_3d(left, right)
+            print("Found")
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
             pprint.pprint(self.pts)
             with open('needle_data/needle_points.p', "w+") as f:
-                print("Found")
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
+        else:
+            print("left", len(left))
+            print("right", len(right))
 
 if __name__ == "__main__":
     a = EllipseDetector()

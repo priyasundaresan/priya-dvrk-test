@@ -63,7 +63,7 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            scipy.misc.imsave('camera_data/unfitted_image.jpg', self.left_image)
+            scipy.misc.imsave('camera_data/unfitted.jpg', self.left_image)
         # if self.right_image != None:
         #     self.process_image()
 
