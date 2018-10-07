@@ -120,10 +120,10 @@ class EllipseDetector:
                     cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
                     cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(self.right_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
-                # else:
-                #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
-                #     cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
-                #     cv2.putText(self.right_image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                else:
+                    cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
+                    cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
+                    cv2.putText(self.right_image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         scipy.misc.imsave('camera_data/fitted.jpg', self.right_image)
 
         
