@@ -29,7 +29,7 @@ def home(psm, pos, rot):
 
 def pickup(psm, points, z_upper, z_lower):
 	for point in points:
-		x, y = point[0], point[1]
+		x, y, z = point[0], point[1], point[2]
 		print("Moving to:")
 		print(point)
 		psm.move(PyKDL.Vector(x, y, z_upper))

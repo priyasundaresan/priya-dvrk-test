@@ -7,9 +7,8 @@ import numpy as np
 import rospy, scipy.misc
 from sensor_msgs.msg import Image, CameraInfo
 import time
-import pickle
-import sys
 import pprint
+import pickle
 
 USE_SAVED_IMAGES = False
 
@@ -48,8 +47,10 @@ class EllipseDetector:
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower_bound = 700
-        self.area_upper_bound = 40000
+        self.area_lower = 300
+        self.area_upper = 30000
+        self.ellipse_area_lower = 10000
+        self.ellipse_area_upper = 30000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -81,8 +82,8 @@ class EllipseDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        # if self.left_image != None:
-        #     self.process_image()
+        if self.left_image is not None:
+            self.process_image(self.left_image, self.right_image)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -91,9 +92,8 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            scipy.misc.imsave('camera_data/unfitted_image.jpg', self.left_image)
-        if self.right_image is not None:
-            self.process_image(self.left_image, self.right_image)
+        # if self.right_image != None:
+        #     self.process_image()
 
     def get_points_3d(self, left_points, right_points):
         """ this method assumes that corresponding points are in the right order
@@ -114,41 +114,69 @@ class EllipseDetector:
         return points_3d
 
     def closest_to_centroid(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY), True)))
+        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
-    def annotate(self, image, cX, cY, true_center, contours, area):
-        print('\nContour Detected')
-        print('Centroid', (cX, cY))
-        print('Closest Point', true_center)
-        print('Area', area)
-        cv2.drawContours(image, contours, -1, (0, 255, 0), 2)
-        cv2.circle(image, (cX, cY), 7, (255, 0, 0), -1)
-        cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        cv2.circle(image, true_center, 10, (0, 0, 0), -1)
+    def report(self, contour, area, cX, cY, closest, ellipse_area):
+        print('Contour Detected')
+        print('Contour Area:', area)
+        print('Centroid', cX, cY)
+        print('Closest Point', closest[0], closest[1])
+        print('Ellipse Area:', ellipse_area)
+        print('---')
+
+    def preprocess(self, image):
+        image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
+        h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
+        nonSat = s < 180
+        disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+        nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
+        v2 = v.copy()
+        v2[nonSat == 0] = 0
+        glare = v2 > 240;
+        glare = cv2.dilate(glare.astype(np.uint8), disk);
+        corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
+        scipy.misc.imsave("camera_data/corrected.jpg", corrected)
+        gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
+        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        scipy.misc.imsave('camera_data/thresh.jpg', thresh)
+        return thresh
+
 
     # Working now
     def process_image(self, *images):
         left, right = [], []
         for image in images:
-            inverted = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY_INV)[1]
-            scipy.misc.imsave('camera_data/thresh.jpg', thresh)
-            im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            thresh = self.preprocess(image)
+            im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for c in contours:
                 M = cv2.moments(c)
                 area = cv2.contourArea(c)
-                if int(M["m00"]) != 0 and (self.area_lower_bound < area < self.area_upper_bound):
+                if int(M["m00"]) != 0 and (self.area_lower < area < self.area_upper):
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
                     closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
+                    ellipse = cv2.fitEllipse(c)
+                    (x,y), (ma,MA), angle = ellipse
+                    aspect_ratio = ma/MA
+                    ellipse_area = (np.pi * ma * MA)/4
                     true_center = (closest[0], closest[1])
-                    if image is self.left_image:
-                        left.append(true_center)
-                        self.annotate(image, cX, cY, true_center, [c], area)
-                        scipy.misc.imsave('camera_data/fitted_image.jpg', image)
+                    if (0.75 < aspect_ratio < 1.0):
+                        if image is self.right_image:
+                            right.append(true_center)
+                            self.report(c, area, cX, cY, closest, ellipse_area)
+                            cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+                            cv2.ellipse(image, ellipse, (255, 0, 0), 2)
+                            cv2.circle(image, (cX, cY), 7, (255, 255, 255), -1)
+                            cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                            cv2.circle(image, true_center, 10, (0, 0, 0), -1)
+                        else:
+                            left.append(true_center)
                     else:
-                        right.append(true_center)
-        if len(left) > 0 and len(left) == len(right):
+                        cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
+                        cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                        cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        if len(right) > 0 and len(right) == len(left):
             pts3d = self.get_points_3d(left, right)
             print("Found")
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
@@ -157,14 +185,17 @@ class EllipseDetector:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
         return
+            # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
+        
 if __name__ == "__main__":
     a = EllipseDetector()
     while 1:
-        frame = a.left_image
+        frame = a.right_image
         if frame is None:
             continue
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
+    # rospy.spin()

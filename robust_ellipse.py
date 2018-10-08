@@ -63,7 +63,6 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            scipy.misc.imsave('camera_data/unfitted.jpg', self.left_image)
         # if self.right_image != None:
         #     self.process_image()
 
@@ -92,7 +91,6 @@ class EllipseDetector:
         corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
         scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
-        scipy.misc.imsave('camera_data/gray.jpg', gray)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
@@ -120,11 +118,11 @@ class EllipseDetector:
                     cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
                     cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(self.right_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
-                else:
-                    cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
-                    cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
-                    cv2.putText(self.right_image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        scipy.misc.imsave('camera_data/fitted.jpg', self.right_image)
+                # else:
+                #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
+                #     cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
+                #     cv2.putText(self.right_image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        # scipy.misc.imsave('camera_data/fitted.jpg', self.right_image)
 
         
 if __name__ == "__main__":
@@ -133,8 +131,7 @@ if __name__ == "__main__":
         frame = a.right_image
         if frame is None:
             continue
-        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
-        cv2.imshow("frame", frame)
+        cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
