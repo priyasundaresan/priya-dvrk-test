@@ -138,6 +138,7 @@ class EllipseDetector:
                 M = cv2.moments(c)
                 area = cv2.contourArea(c)
                 if int(M["m00"]) != 0 and (self.area_lower_bound < area < self.area_upper_bound):
+                    print(area)
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
                     closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()

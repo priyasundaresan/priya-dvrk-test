@@ -91,7 +91,7 @@ if __name__ == '__main__':
 	needle_to_psm2 = read_psm_data.transform_matrix(needle_points, TE_2)
 	print(needle_to_psm2)
 
-	""" Verbose test for moving the PSM to needle centers, picking them up, and releasing them """
+	# """ Verbose test for moving the PSM to needle centers, picking them up, and releasing them """
 	pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
 	home(psm2, pos, rot)
