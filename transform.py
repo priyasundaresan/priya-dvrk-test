@@ -38,7 +38,7 @@ def psm_data_to_matrix(cache):
 def transform_matrix(inpt, T):
     outpt = np.matrix(np.zeros(shape=inpt.shape))
     for i in range(np.size(inpt, 0)):
-        outpt[i] = rigid_transform_test.transform_point(np.array(inpt[i]), T)
+        outpt[i] = rigid_transform.transform_point(np.array(inpt[i]), T)
     return outpt
 
 def error(m1, m2):
@@ -50,63 +50,27 @@ def error(m1, m2):
 
 if __name__ == '__main__':
 
-    # psm1_data = list(load_all('calibration/psm1_recordings.txt'))
-    psm2_data = list(load_all('calibration/psm2_recordings.txt'))
+    w = []
+    for i in range(5):
+        for j in range(5):
+            w.append([float(j)/80, float(i)/80, 0.])
+    world = np.matrix(w)
+
+    psm2_data = list(load_all('psm2_recordings.txt'))
 
     # print_psm_cache(psm1_data, 'PSM1 DATA')
     # print_psm_cache(psm2_data, 'PSM2 DATA')
 
-    # psm1_matrix = psm_data_to_matrix(psm1_data)
     psm2_matrix = psm_data_to_matrix(psm2_data)
-    endoscope_matrix = np.matrix(list(read_chessboard_data.load_all('calibration/endoscope_chesspts.p'))[0])
-
-
-    # print("\nPSM1 --> PSM2 Transform Matrix")
-    # T1_2 = rigid_transform_test.solve_for_rigid_transformation(psm1_matrix, psm2_matrix)
-    # print(T1_2)
-
-    # print("\nPSM2 --> PSM1 Transform Matrix")
-    # T2_1 = rigid_transform_test.solve_for_rigid_transformation(psm2_matrix, psm1_matrix)
-    # print(T2_1)
-
-    # print("\nPSM1 --> Endoscope Transform Matrix")
-    # T1_E = rigid_transform_test.solve_for_rigid_transformation(psm1_matrix, endoscope_matrix)
-    # print(T1_E)
+    endoscope_matrix = np.matrix(list(read_chessboard.load_all('camera_data/endoscope_chesspts.p'))[0])
 
     print("\nPSM2 --> Endoscope Transform Matrix")
-    T2_E = rigid_transform_test.solve_for_rigid_transformation(psm2_matrix, endoscope_matrix)
+    T2_E = rigid_transform.solve_for_rigid_transformation(psm2_matrix, endoscope_matrix)
     print(T2_E)
 
     print("\nEndoscope --> PSM2 Transform Matrix")
-    TE_2 = rigid_transform_test.solve_for_rigid_transformation(endoscope_matrix, psm2_matrix)
+    TE_2 = rigid_transform.solve_for_rigid_transformation(endoscope_matrix, psm2_matrix)
     print(TE_2)
-
-    # print('\nTransforming PSM1 --> PSM2')
-    # print('            x           y           z')
-    # psm1_2 = transform_matrix(psm1_matrix, T1_2)
-    # print(psm1_2)
-    # print('Actual PSM2 Data')
-    # print('            x           y           z')
-    # print(psm2_matrix)
-    # print('Associated Error:', error(psm1_2, psm2_matrix))
-
-    # print('\nTransforming PSM2 --> PSM1')
-    # print('            x           y           z')
-    # psm2_1 = transform_matrix(psm2_matrix, T2_1)
-    # print(psm2_1)
-    # print('Actual PSM1 Data')
-    # print('            x           y           z')
-    # print(psm1_matrix)
-    # print('Associated Error:', error(psm2_1, psm1_matrix))
-
-    # print('\nTransforming PSM1 --> Endoscope')
-    # print('            x           y           z')
-    # psm1_e = transform_matrix(psm1_matrix, T1_E)
-    # print(psm1_e)
-    # print('Actual Endoscope Data')
-    # print('            x           y           z')
-    # print(endoscope_matrix)
-    # print('Associated Error:', error(psm1_e, endoscope_matrix))
 
     print('\nTransforming PSM2 --> Endoscope')
     print('            x           y           z')
@@ -125,5 +89,32 @@ if __name__ == '__main__':
     print('            x           y           z')
     print(psm2_matrix)
     print('Associated Error:', error(psme_2, psm2_matrix))
+
+    print("\nPSM2 --> World Transform Matrix")
+    T2_W = rigid_transform.solve_for_rigid_transformation(psm2_matrix, world)
+    print(T2_W)
+
+    print('\nTransforming PSM2 --> World')
+    print('            x           y           z')
+    psm2_w = transform_matrix(psm2_matrix, T2_W)
+    print(psm2_w)
+    print('Actual World Data')
+    print('            x           y           z')
+    print(world)
+    print('Associated Error:', error(psm2_w, world))
+
+    print("\n Endoscope --> World Transform Matrix")
+    TE_W = rigid_transform.solve_for_rigid_transformation(endoscope_matrix, world)
+    print(TE_W)
+
+    print('\nTransforming Endoscope --> World')
+    print('            x           y           z')
+    e_w = transform_matrix(endoscope_matrix, TE_W)
+    print(e_w)
+    print('Actual World Data')
+    print('            x           y           z')
+    print(world)
+    print('Associated Error:', error(e_w, world))
+
 
     

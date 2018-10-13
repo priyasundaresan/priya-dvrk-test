@@ -2,7 +2,7 @@ import robot
 import pprint
 import numpy as np
 import PyKDL
-import read_transforms
+import transform
 import read_chessboard
 import rigid_transform
 import read_needle
@@ -71,27 +71,29 @@ if __name__ == '__main__':
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
 
+	psm2.dmove(PyKDL.Vector(0.005, 0, 0))
+
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
 	home(psm2, pos, rot)
 	
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
-	# psm2_calibration_data = list(read_psm_data.load_all('calibration/psm2_recordings.txt'))
-	# psm2_calibration_matrix = read_psm_data.psm_data_to_matrix(psm2_calibration_data)
-	# endoscope_calibration_matrix = np.matrix(list(read_chessboard_data.load_all('calibration/endoscope_chesspts.p'))[0])
+	psm2_calibration_data = list(transform.load_all('calibration/psm2_recordings.txt'))
+	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
+	endoscope_calibration_matrix = np.matrix(list(read_chessboard.load_all('calibration/endoscope_chesspts.p'))[0])
 
-	# """ Get the coordinates of most recently found needle centers (in endoscope frame) """
-	# needle_points = np.matrix(list(read_needle_points.load_all('needle_data/needle_points.p'))[0])
+	""" Get the coordinates of most recently found needle centers (in endoscope frame) """
+	needle_points = np.matrix(list(read_needle.load_all('needle_data/needle_points.p'))[0])
 
-	# """ Solve for the transform between endoscope to PSM2 """
-	# TE_2 = rigid_transform_test.solve_for_rigid_transformation(endoscope_calibration_matrix, psm2_calibration_matrix)
-	# print('\nTransforming Needle Points Endoscope Frame --> PSM2 Frame')
-	# print('            x           y           z')
-	# needle_to_psm2 = read_psm_data.transform_matrix(needle_points, TE_2)
-	# print(needle_to_psm2)
+	""" Solve for the transform between endoscope to PSM2 """
+	TE_2 = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, psm2_calibration_matrix)
+	print('\nTransforming Needle Points Endoscope Frame --> PSM2 Frame')
+	print('            x           y           z')
+	needle_to_psm2 = transform.transform_matrix(needle_points, TE_2)
+	print(needle_to_psm2)
 
-	# # """ Verbose test for moving the PSM to needle centers, picking them up, and releasing them """
-	# pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+	""" Verbose test for moving the PSM to needle centers, picking them up, and releasing them """
+	pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-	# home(psm2, pos, rot)
+	home(psm2, pos, rot)
