@@ -39,7 +39,7 @@ def PSM1_callback():
     yaw, pitch, roll = np.array(kdl_pose.M.GetEulerZYX())
     psm1_pts = [x, y, z, yaw, pitch, roll]
     img_sub.right_called = True
-    psm1_img_id = 'right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
+    psm1_img_id = 'psm_data/right' + str(img_sub.right_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
     print_position(1, psm1_pts)
     export_position(psm1_file, psm1_pts, psm1_img_id)
 
@@ -49,7 +49,7 @@ def PSM2_callback():
     yaw, pitch, roll = np.array(kdl_pose.M.GetEulerZYX())
     psm2_pts = [x, y, z, yaw, pitch, roll]
     img_sub.left_called = True
-    psm2_img_id = 'left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
+    psm2_img_id = 'psm_data/left' + str(img_sub.left_img_id) + '.jpg' # Gets the latest image (corresponding to current position)
     print_position(2, psm2_pts)
     export_position(psm2_file, psm2_pts, psm2_img_id)
 
