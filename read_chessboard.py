@@ -1,7 +1,7 @@
 import pickle
 import pprint
 import numpy as np
-import rigid_transform_test
+import rigid_transform
 
 def load_all(filename):
     with open(filename, 'rb') as f:

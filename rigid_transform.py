@@ -28,7 +28,6 @@ def solve_for_rigid_transformation(inpts, outpts):
     assert inpts.shape == outpts.shape
     inpts, outpts = np.copy(inpts), np.copy(outpts)
     inpt_mean = inpts.mean(axis=0)
-    print(inpt_mean)
     outpt_mean = outpts.mean(axis=0)
     outpts -= outpt_mean
     inpts -= inpt_mean

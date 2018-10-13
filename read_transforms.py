@@ -1,8 +1,8 @@
 import pickle
 import pprint
 import numpy as np
-import rigid_transform_test
-import read_chessboard_data
+import rigid_transform
+import read_chessboard
 
 """NOTE: PSM2 RECORDED IN THIS POSE:
 [[   -0.988883, -0.00205771,   -0.148682;
@@ -47,7 +47,6 @@ def error(m1, m2):
     for i in range(np.size(m1, 0)):
         errors.append(np.linalg.norm(m1[i] - m2[i]))
     return np.mean(errors)
-
 
 if __name__ == '__main__':
 
