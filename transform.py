@@ -55,7 +55,7 @@ def transform_data(inpt, outpt, data_in, T, data_out=None):
     print("\nTransforming {0} --> {1} Transform Matrix".format(inpt, outpt))
     expected = transform(data_in, T)
     print(expected)
-    if data_out:
+    if data_out is not None:
         print("Actual {0} Data".format(outpt))
         print(data_out)
         print("Associated Error: " + str(error(expected, data_out)))
@@ -68,10 +68,10 @@ if __name__ == '__main__':
             w.append([float(j)/80, float(i)/80, 0.])
     world = np.matrix(w)
 
-    psm2_data = list(load_all('psm2_recordings.txt'))
+    psm2_data = list(load_all('world/psm2_recordings.txt'))
     psm2_matrix = psm_data_to_matrix(psm2_data)
 
-    endoscope_matrix = np.matrix(list(read_chessboard.load_all('camera_data/endoscope_chesspts.p'))[0])
+    endoscope_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
 
     T2_E = get_transform("PSM2", "Endoscope", psm2_matrix, endoscope_matrix)
     TE_2 = get_transform("Endoscope", "PSM2", endoscope_matrix, psm2_matrix)
