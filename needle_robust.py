@@ -187,7 +187,7 @@ class EllipseDetector:
         return
             # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
-        
+
 if __name__ == "__main__":
     a = EllipseDetector()
     while 1:
