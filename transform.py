@@ -51,13 +51,14 @@ def get_transform(inpt, outpt, data_in, data_out):
     print(T)
     return T
 
-def transform_data(inpt, outpt, data_in, data_out, T):
+def transform_data(inpt, outpt, data_in, T, data_out=None):
     print("\nTransforming {0} --> {1} Transform Matrix".format(inpt, outpt))
     expected = transform(data_in, T)
     print(expected)
-    print("Actual {0} Data".format(outpt))
-    print(data_out)
-    print("Associated Error: " + str(error(expected, data_out)))
+    if data_out:
+        print("Actual {0} Data".format(outpt))
+        print(data_out)
+        print("Associated Error: " + str(error(expected, data_out)))
     return expected
 
 if __name__ == '__main__':
@@ -75,11 +76,11 @@ if __name__ == '__main__':
     T2_E = get_transform("PSM2", "Endoscope", psm2_matrix, endoscope_matrix)
     TE_2 = get_transform("Endoscope", "PSM2", endoscope_matrix, psm2_matrix)
 
-    psm2_e = transform_data("PSM2", "Endoscope", psm2_matrix, endoscope_matrix, T2_E)
-    psme_2 = transform_data("Endoscope", "PSM2", endoscope_matrix, psm2_matrix, TE_2)
+    psm2_e = transform_data("PSM2", "Endoscope", psm2_matrix, T2_E, endoscope_matrix)
+    psme_2 = transform_data("Endoscope", "PSM2", endoscope_matrix, TE_2, psm2_matrix)
 
     T2_W = get_transform("PSM2", "World", psm2_matrix, world)
-    psm2_w = transform_data("PSM2", "World", psm2_matrix, world, T2_W)
+    psm2_w = transform_data("PSM2", "World", psm2_matrix, T2_W, world)
 
     TE_W = get_transform("Endoscope", "World", endoscope_matrix, world)
-    e_w = transform_data("Endoscope", "World", endoscope_matrix, world, TE_W)
+    e_w = transform_data("Endoscope", "World", endoscope_matrix, TE_W, world)

@@ -20,8 +20,8 @@ class EllipseDetector:
         self.plane = None
         self.area_lower = 300
         self.area_upper = 30000
-        self.ellipse_area_lower = 10000
-        self.ellipse_area_upper = 30000
+        self.ellipse_area_lower = 5000
+        self.ellipse_area_upper = 200000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -111,7 +111,7 @@ class EllipseDetector:
                 (x,y), (ma,MA), angle = ellipse
                 aspect_ratio = ma/MA
                 ellipse_area = (np.pi * ma * MA)/4
-                if (0.75 < aspect_ratio < 1.0):
+                if (0.75 < aspect_ratio < 1.0) and (self.ellipse_area_lower < ellipse_area):
                     self.report(c, area, cX, cY, closest, ellipse_area)
                     cv2.drawContours(self.right_image, [c], -1, (0, 255, 0), 2)
                     cv2.ellipse(self.right_image, ellipse, (255, 0, 0), 2)

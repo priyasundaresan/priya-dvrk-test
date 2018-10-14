@@ -45,12 +45,14 @@ class EllipseDetector:
         self.bridge = cv_bridge.CvBridge()
         self.left_image = None
         self.right_image = None
+        self.corrected_left = None
+        self.corrected_right = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
         self.area_lower = 300
         self.area_upper = 30000
         self.ellipse_area_lower = 10000
-        self.ellipse_area_upper = 30000
+        self.ellipse_area_upper = 200000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -83,7 +85,9 @@ class EllipseDetector:
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         if self.left_image is not None:
-            self.process_image(self.left_image, self.right_image)
+            self.corrected_left = self.preprocess(self.left_image)
+            self.corrected_right = self.preprocess(self.right_image)
+            self.process_image(self.corrected_left, self.corrected_right)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -116,12 +120,13 @@ class EllipseDetector:
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
-    def report(self, contour, area, cX, cY, closest, ellipse_area):
+    def report(self, contour, area, cX, cY, closest, ellipse_area, angle):
         print('Contour Detected')
         print('Contour Area:', area)
         print('Centroid', cX, cY)
         print('Closest Point', closest[0], closest[1])
         print('Ellipse Area:', ellipse_area)
+        print('Angle:', angle)
         print('---')
 
     def preprocess(self, image):
@@ -147,8 +152,7 @@ class EllipseDetector:
     def process_image(self, *images):
         left, right = [], []
         for image in images:
-            thresh = self.preprocess(image)
-            im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            im2, contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for c in contours:
                 M = cv2.moments(c)
                 area = cv2.contourArea(c)
@@ -161,21 +165,22 @@ class EllipseDetector:
                     aspect_ratio = ma/MA
                     ellipse_area = (np.pi * ma * MA)/4
                     true_center = (closest[0], closest[1])
-                    if (0.75 < aspect_ratio < 1.0):
-                        if image is self.right_image:
+                    if (0.75 < aspect_ratio < 1.0) and self.ellipse_area_lower < ellipse_area:
+                        if image is self.corrected_right:
                             right.append(true_center)
-                            self.report(c, area, cX, cY, closest, ellipse_area)
-                            cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
-                            cv2.ellipse(image, ellipse, (255, 0, 0), 2)
-                            cv2.circle(image, (cX, cY), 7, (255, 255, 255), -1)
-                            cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                            cv2.circle(image, true_center, 10, (0, 0, 0), -1)
+                            self.report(c, area, cX, cY, closest, ellipse_area, angle)
+                            cv2.drawContours(self.right_image, [c], -1, (0, 255, 0), 2)
+                            cv2.ellipse(self.right_image, ellipse, (255, 0, 0), 2)
+                            cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
+                            cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                            cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
                         else:
                             left.append(true_center)
-                    else:
-                        cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
-                        cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                        cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                        
+                    # else:
+                    #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
+                    #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                    #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         if len(right) > 0 and len(right) == len(left):
             pts3d = self.get_points_3d(left, right)
             print("Found")
