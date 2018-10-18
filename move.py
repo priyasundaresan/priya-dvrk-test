@@ -39,9 +39,9 @@ def pickup(psm, points, z_upper, z_lower):
 		time.sleep(.25)
 		psm.move(PyKDL.Vector(x, y, z_lower))
 		time.sleep(.25)
-		print("Grasping...")
-		psm.close_jaw()
-		time.sleep(.25)
+		# print("Grasping...")
+		# psm.close_jaw()
+		# time.sleep(.25)
 		print("Grasped...")
 		psm.move(PyKDL.Vector(x, y, z_upper))
 		time.sleep(.25)
@@ -63,7 +63,10 @@ if __name__ == '__main__':
 	z_upper = -0.115688
 
 	""" Where PSM2 touches the platform """
-	z_lower = -0.1233
+	# For white background:
+	# z_lower = -0.1233
+	# For non-white background:
+	z_lower = -0.128
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)

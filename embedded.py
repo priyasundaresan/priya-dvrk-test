@@ -22,10 +22,11 @@ class EmbeddedNeedleDetector():
         self.corrected_right = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 500
-        self.area_upper = 30000
-        self.ellipse_area_lower = 1500
-        self.ellipse_area_upper = 200000
+        self.area_lower = 1000
+        self.area_upper = 20000
+        self.box_upper = 40000
+        self.ellipse_lower = 1300
+        self.ellipse_upper = 120000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -73,13 +74,13 @@ class EmbeddedNeedleDetector():
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
 
-    def report(self, contour, area, cX, cY, closest, ellipse_area, ellipse_aspect):
+    def report(self, contour, area, cX, cY, closest, ellipse_area, box_area):
         print('Contour Detected')
         print('Contour Area:', area)
         print('Centroid', cX, cY)
         print('Closest Point', closest[0], closest[1])
         print('Ellipse Area:', ellipse_area)
-        print('Ellipse Aspect:', ellipse_aspect)
+        print('Box Area:', box_area)
         print('---')
 
     def preprocess(self, image):
@@ -99,7 +100,7 @@ class EmbeddedNeedleDetector():
         img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
         img_output = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
         scipy.misc.imsave("camera_data/equalized.jpg", img_output)
-        gray = cv2.cvtColor(img_output, cv2.COLOR_RGB2GRAY)
+        gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         scipy.misc.imsave('camera_data/gray.jpg', gray)
         thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
@@ -136,11 +137,11 @@ class EmbeddedNeedleDetector():
 
             	ratio = max(box_area, ellipse_area)/min(box_area, ellipse_area)
 
-            	if ellipse_aspect < 0.75 and (self.ellipse_area_lower < ellipse_area < self.ellipse_area_upper):
-            		cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
+            	if box_area < self.box_upper and self.ellipse_lower < ellipse_area < self.ellipse_upper:
+            		# cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
             		cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             		cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
-            		self.report(c, area, cX, cY, closest, ellipse_area, ellipse_aspect)
+            		self.report(c, area, cX, cY, closest, ellipse_area, box_area)
             		cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
             		cv2.drawContours(self.right_image,[box],0,(0,255,0),2)
             		rows,cols = self.right_image.shape[:2]
@@ -148,7 +149,7 @@ class EmbeddedNeedleDetector():
             		[vx,vy,x,y] = line
             		lefty = int((-x*vy/vx) + y)
             		righty = int(((cols-x)*vy/vx)+y)
-            		# cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
+            		cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
                     
                 # else:
                 #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
