@@ -15,8 +15,6 @@ Run 'python needle3d.py' to find the needle centers in view and get their 3d pos
 Then run 'python move_psm_test.py' to move the PSM to those centers and pick up the needles.
 """
 
-USE_WORLD_TRANSFORM = False
-
 def home(psm, pos, rot):
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
@@ -29,26 +27,16 @@ def home(psm, pos, rot):
 	psm.close_jaw()
 	time.sleep(.25)
 
-def pickup(psm, points, z_upper, z_lower):
+def move_to(psm, points, z_upper):
 	for point in points:
 		x, y, z = point[0], point[1], point[2]
 		print("Moving to:")
 		print(point)
 		psm.move(PyKDL.Vector(x, y, z_upper))
 		time.sleep(.25)
-		psm.open_jaw()
-		print("Lowering...")
+		psm.move(PyKDL.Vector(x, y, z))
 		time.sleep(.25)
-		psm.move(PyKDL.Vector(x, y, z_lower))
-		time.sleep(.25)
-		print("Grasping...")
-		psm.close_jaw()
-		time.sleep(.25)
-		print("Grasped...")
 		psm.move(PyKDL.Vector(x, y, z_upper))
-		time.sleep(.25)
-		print("Releasing...")
-		psm.open_jaw()
 		time.sleep(.25)
 
 
@@ -63,12 +51,6 @@ if __name__ == '__main__':
 	When the gripper picks up a needle, it moves up to this point and then releases the needle.
 	Change if it is too high/low above the platform. """
 	z_upper = -0.112688
-
-	""" Where PSM2 touches the platform """
-	# For white background:
-	# z_lower = -0.1233
-	# For phantom background:
-	z_lower = -0.128
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
@@ -85,31 +67,17 @@ if __name__ == '__main__':
 	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
 	endoscope_calibration_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
 
-	""" Get the coordinates of most recently found needle centers (in endoscope frame) """
-	needle_points = np.matrix(list(read_needle.load_all('needle_data/needle_points.p'))[0])
+	world = transform.generate_world()
 
-	if USE_WORLD_TRANSFORM:
+	TE_W = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, world)
+	endo_to_world = transform.transform_data("Endoscope", "World", endoscope_calibration_matrix, TE_W)
+	pprint.pprint(endo_to_world)
 
-		world = transform.generate_world()
+	TW_2 = rigid_transform.solve_for_rigid_transformation(world, psm2_calibration_matrix)
+	world_to_psm2 = transform.transform_data("World", "PSM2", endo_to_world, TW_2)
+	pprint.pprint(world_to_psm2)
 
-		TE_W = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, world)
-		needle_to_world = transform.transform_data("Endoscope", "World", needle_points, TE_W)
-		needle_to_world[:,2] = 0.
-		pprint.pprint(needle_to_world)
-
-		TW_2 = rigid_transform.solve_for_rigid_transformation(world, psm2_calibration_matrix)
-		world_to_psm2 = transform.transform_data("World", "PSM2", needle_to_world, TW_2)
-		pprint.pprint(world_to_psm2)
-
-		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, world_to_psm2.tolist(), z_upper, z_lower)
-
-	else:
-		""" Solve for the transform between endoscope to PSM2 """
-		TE_2 = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, psm2_calibration_matrix)
-		needle_to_psm2 = transform.transform_data("Endoscope", "PSM2",needle_points, TE_2)
-
-		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+	""" Move to chessboard corner, descend, come up,and go to next. """
+	move_to(psm2, world_to_psm2.tolist(), z_upper)
 
 	home(psm2, pos, rot)

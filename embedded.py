@@ -10,7 +10,7 @@ import time
 import pprint
 import pickle
 
-USE_SAVED_IMAGES = True
+USE_SAVED_IMAGES = False
 
 class EmbeddedNeedleDetector():
 
@@ -73,6 +73,9 @@ class EmbeddedNeedleDetector():
 
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
+
+    def endpoint(self, contour_points, cX, cY):
+        return min(contour_points, key=lambda c: (cv2.pointPolygonTest(c,(cX,cY),True)))
 
     def report(self, contour, area, cX, cY, closest, ellipse_area, box_area):
         print('Contour Detected')
@@ -139,17 +142,23 @@ class EmbeddedNeedleDetector():
 
             	if box_area < self.box_upper and self.ellipse_lower < ellipse_area < self.ellipse_upper:
             		# cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
-            		cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            		cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
-            		self.report(c, area, cX, cY, closest, ellipse_area, box_area)
-            		cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
-            		cv2.drawContours(self.right_image,[box],0,(0,255,0),2)
-            		rows,cols = self.right_image.shape[:2]
-            		line = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01)
-            		[vx,vy,x,y] = line
-            		lefty = int((-x*vy/vx) + y)
-            		righty = int(((cols-x)*vy/vx)+y)
-            		cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
+                    cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
+                    self.report(c, area, cX, cY, closest, ellipse_area, box_area)
+                    cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
+                    cv2.drawContours(self.right_image,[box],0,(0,255,0),2)
+                    rows,cols = self.right_image.shape[:2]
+                    endpoint = np.vstack(self.endpoint(c, cX, cY)).squeeze()
+                    endpt = (endpoint[0], endpoint[1])
+                    cv2.circle(self.right_image, endpt, 10, (0, 170, 0), -1)
+                    line = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01)
+                    [vx,vy,x,y] = line
+                    # [vx1, vy1, x1, y1] = [np.asscalar(i) for i in line]
+                    # pull = (int(true_center[0] - 100*vx1), int(true_center[1] - 100*vy1))
+                    # cv2.circle(self.right_image, pull, 10, (0, 255, 0), -1)
+                    lefty = int((-x*vy/vx) + y)
+                    righty = int(((cols-x)*vy/vx)+y)
+                    cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
                 # else:
                 #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)

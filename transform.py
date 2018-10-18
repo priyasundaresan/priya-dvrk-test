@@ -4,6 +4,14 @@ import numpy as np
 import rigid_transform
 import read_chessboard
 
+def generate_world():
+    w = []
+    for i in range(5):
+        for j in range(5):
+            w.append([float(j)/80, float(i)/80, 0.])
+    return np.matrix(w)
+
+
 def load_all(filename):
     with open(filename, 'rb') as f:
         while True:
@@ -62,11 +70,8 @@ def transform_data(inpt, outpt, data_in, T, data_out=None):
     return expected
 
 if __name__ == '__main__':
-    w = []
-    for i in range(5):
-        for j in range(5):
-            w.append([float(j)/80, float(i)/80, 0.])
-    world = np.matrix(w)
+
+    world = generate_world()
 
     psm2_data = list(load_all('world/psm2_recordings.txt'))
     psm2_matrix = psm_data_to_matrix(psm2_data)

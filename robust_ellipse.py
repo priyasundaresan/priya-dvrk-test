@@ -53,8 +53,8 @@ class EllipseDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        if self.left_image != None:
-            self.process_image()
+        # if self.left_image != None:
+        #     self.process_image(self.right_image)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -63,8 +63,8 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        # if self.right_image != None:
-        #     self.process_image()
+        if self.right_image != None:
+            self.process_image(self.left_image)
 
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
@@ -97,8 +97,8 @@ class EllipseDetector:
 
 
     # Working now
-    def process_image(self):
-        thresh = self.preprocess(self.right_image)
+    def process_image(self, image):
+        thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for c in contours:
             M = cv2.moments(c)
@@ -113,11 +113,11 @@ class EllipseDetector:
                 ellipse_area = (np.pi * ma * MA)/4
                 if (0.75 < aspect_ratio < 1.0) and (self.ellipse_area_lower < ellipse_area):
                     self.report(c, area, cX, cY, closest, ellipse_area)
-                    cv2.drawContours(self.right_image, [c], -1, (0, 255, 0), 2)
-                    cv2.ellipse(self.right_image, ellipse, (255, 0, 0), 2)
-                    cv2.circle(self.right_image, (cX, cY), 7, (255, 255, 255), -1)
-                    cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                    cv2.circle(self.right_image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
+                    cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+                    cv2.ellipse(image, ellipse, (255, 0, 0), 2)
+                    cv2.circle(image, (cX, cY), 7, (255, 255, 255), -1)
+                    cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.circle(image, (closest[0], closest[1]), 10, (0, 0, 0), -1)
                 # else:
                 #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
@@ -128,7 +128,7 @@ class EllipseDetector:
 if __name__ == "__main__":
     a = EllipseDetector()
     while 1:
-        frame = a.right_image
+        frame = a.left_image
         if frame is None:
             continue
         cv2.imshow('frame', frame)

@@ -189,7 +189,7 @@ class EllipseDetector:
             with open('needle_data/needle_points.p', "w+") as f:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
-        return
+        # return
             # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
 
