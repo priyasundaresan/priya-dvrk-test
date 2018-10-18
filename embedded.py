@@ -10,7 +10,7 @@ import time
 import pprint
 import pickle
 
-USE_SAVED_IMAGES = False
+USE_SAVED_IMAGES = True
 
 class EmbeddedNeedleDetector():
 
@@ -55,7 +55,7 @@ class EmbeddedNeedleDetector():
         if rospy.is_shutdown():
             return
         if USE_SAVED_IMAGES:
-            self.right_image = cv2.imread('right_checkerboard.jpg')
+            self.right_image = cv2.imread('embedded_images/left4.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         if self.left_image is not None:
@@ -150,7 +150,6 @@ class EmbeddedNeedleDetector():
             		lefty = int((-x*vy/vx) + y)
             		righty = int(((cols-x)*vy/vx)+y)
             		cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
-                    
                 # else:
                 #     cv2.drawContours(self.right_image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
@@ -167,4 +166,3 @@ if __name__ == "__main__":
             break
     cv2.destroyAllWindows()
     # rospy.spin()
-
