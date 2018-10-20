@@ -9,6 +9,7 @@ from sensor_msgs.msg import Image, CameraInfo
 import time
 
 USE_SAVED_IMAGES = False
+USE_SPLIT_VIEW = True
 
 class EllipseDetector:
 
@@ -53,8 +54,7 @@ class EllipseDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        # if self.left_image != None:
-        #     self.process_image(self.right_image)
+        self.process_image(self.right_image)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -63,8 +63,7 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        if self.right_image != None:
-            self.process_image(self.left_image)
+        self.process_image(self.left_image)
 
     def closest_to_centroid(self, contour_points, cX, cY):
         return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
@@ -79,7 +78,7 @@ class EllipseDetector:
 
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
+        # scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
         h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
         nonSat = s < 180
         disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -89,8 +88,9 @@ class EllipseDetector:
         glare = v2 > 240;
         glare = cv2.dilate(glare.astype(np.uint8), disk);
         corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
-        scipy.misc.imsave("camera_data/corrected.jpg", corrected)
+        # scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
+        gray = cv2.blur(gray, (5, 5))
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
@@ -128,11 +128,17 @@ class EllipseDetector:
 if __name__ == "__main__":
     a = EllipseDetector()
     while 1:
-        frame = a.left_image
-        if frame is None:
-            continue
+        if USE_SPLIT_VIEW:
+            if a.left_image is None or a.right_image is None:
+                continue
+            left = cv2.resize(a.left_image, (0, 0), fx=0.5, fy=0.5)
+            right = cv2.resize(a.right_image, (0, 0), fx=0.5, fy=0.5)
+            frame = np.hstack((left, right))
+        else:
+            frame = a.left_image
+            if frame is None:
+                continue
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
-    # rospy.spin()
