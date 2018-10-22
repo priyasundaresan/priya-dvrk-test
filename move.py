@@ -66,9 +66,9 @@ if __name__ == '__main__':
 
 	""" Where PSM2 touches the platform """
 	# For white background:
-	# z_lower = -0.1233
+	z_lower = -0.1233
 	# For phantom background:
-	z_lower = -0.128
+	# z_lower = -0.128
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)

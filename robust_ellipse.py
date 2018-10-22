@@ -79,6 +79,7 @@ class EllipseDetector:
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
+        image_in = cv2.bilateralFilter(image_in, 9, 75, 75)
         h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
         nonSat = s < 180
         disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -90,7 +91,6 @@ class EllipseDetector:
         corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
         # scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
-        gray = cv2.blur(gray, (5, 5))
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
