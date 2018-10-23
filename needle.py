@@ -91,7 +91,6 @@ class EllipseDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            scipy.misc.imsave('camera_data/unfitted_image.jpg', self.left_image)
         if self.right_image is not None:
             self.process_image(self.left_image, self.right_image)
 
@@ -100,6 +99,9 @@ class EllipseDetector:
             and returns a list of 3d points """
 
         # both lists must be of the same lenghth otherwise return None
+        left_points, right_points = sorted(left_points), sorted(right_points)
+        print("\nLeft/Right Points Found")
+        print(left_points, right_points)
         if len(left_points) != len(right_points):
             rospy.logerror("The number of left points and the number of right points is not the same")
             return None
@@ -146,7 +148,6 @@ class EllipseDetector:
                     if image is self.left_image:
                         left.append(true_center)
                         self.annotate(image, cX, cY, true_center, [c], area)
-                        scipy.misc.imsave('camera_data/fitted_image.jpg', image)
                     else:
                         right.append(true_center)
         if len(left) > 0 and len(left) == len(right):

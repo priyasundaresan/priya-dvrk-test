@@ -104,10 +104,12 @@ class EllipseDetector:
             and returns a list of 3d points """
 
         # both lists must be of the same lenghth otherwise return None
+        left_points, right_points = sorted(left_points), sorted(right_points)
+        print("\nLeft/Right Points Found:")
+        print(left_points, right_points)
         if len(left_points) != len(right_points):
             rospy.logerror("The number of left points and the number of right points is not the same")
             return None
-
         points_3d = []
         for i in range(len(left_points)):
             a = left_points[i]
@@ -115,6 +117,7 @@ class EllipseDetector:
             disparity = abs(a[0]-b[0])
             pt = convertStereo(a[0], a[1], disparity, self.info)
             points_3d.append(pt)
+        # print(points_3d)
         return points_3d
 
     def closest_to_centroid(self, contour_points, cX, cY):
@@ -131,7 +134,6 @@ class EllipseDetector:
 
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
         h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
         nonSat = s < 180
         disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -141,10 +143,8 @@ class EllipseDetector:
         glare = v2 > 240;
         glare = cv2.dilate(glare.astype(np.uint8), disk);
         corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
-        scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
 
 
@@ -189,8 +189,6 @@ class EllipseDetector:
             with open('needle_data/needle_points.p', "w+") as f:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
-        # return
-            # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
 
 if __name__ == "__main__":
