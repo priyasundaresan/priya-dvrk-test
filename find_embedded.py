@@ -202,6 +202,7 @@ class EmbeddedDetector:
                     #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                     #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                
         if len(right) > 0 and len(right) == len(left):
             pts3d = self.get_points_3d(left, right)
             print("Found")
@@ -210,7 +211,6 @@ class EmbeddedDetector:
             with open('needle_data/needle_points.p', "w+") as f:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
-            # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
 
 if __name__ == "__main__":

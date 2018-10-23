@@ -158,6 +158,8 @@ class EmbeddedNeedleDetector():
                 #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                 #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            # elif 500 < area < 2000:
+            #     cv2.drawContours(image, [c], -1, (0, 255, 255), 2)
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
