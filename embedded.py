@@ -21,7 +21,7 @@ class EmbeddedNeedleDetector():
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1400
+        self.area_lower = 1600
         self.area_upper = 20000
         self.box_upper = 40000
         self.ellipse_lower = 1300
@@ -100,10 +100,10 @@ class EmbeddedNeedleDetector():
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         # gray = cv2.blur(gray, (5, 5))
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        if image is self.left_image:
-            scipy.misc.imsave('camera_data/threshleft.jpg', thresh)
-        else:
-            scipy.misc.imsave('camera_data/threshright.jpg', thresh)
+        # if image is self.left_image:
+        #     # scipy.misc.imsave('camera_data/threshleft.jpg', thresh)
+        # else:
+        #     # scipy.misc.imsave('camera_data/threshright.jpg', thresh)
         return thresh
 
 

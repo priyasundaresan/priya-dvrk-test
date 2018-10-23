@@ -46,15 +46,13 @@ class EmbeddedDetector:
         self.bridge = cv_bridge.CvBridge()
         self.left_image = None
         self.right_image = None
-        self.left = []
-        self.right = []
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1400
+        self.area_lower = 1600
         self.area_upper = 20000
         self.box_upper = 40000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 160000
+        self.ellipse_upper = 150000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -86,7 +84,10 @@ class EmbeddedDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        self.process_image(self.right_image)
+        if self.left_image is not None:
+            self.corrected_left = self.preprocess(self.left_image)
+            self.corrected_right = self.preprocess(self.right_image)
+            self.process_image(self.corrected_left, self.corrected_right)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -95,13 +96,15 @@ class EmbeddedDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        self.process_image(self.left_image)
 
     def get_points_3d(self, left_points, right_points):
         """ this method assumes that corresponding points are in the right order
             and returns a list of 3d points """
 
         # both lists must be of the same lenghth otherwise return None
+        left_points, right_points = sorted(left_points), sorted(right_points)
+        print("\nLeft/Right points:")
+        print(left_points, right_points)
         if len(left_points) != len(right_points):
             rospy.logerror("The number of left points and the number of right points is not the same")
             return None
@@ -133,7 +136,6 @@ class EmbeddedDetector:
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_in = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
-        scipy.misc.imsave("camera_data/uncorrected.jpg", image_in)
         h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
         nonSat = s < 180
         disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -143,90 +145,80 @@ class EmbeddedDetector:
         glare = v2 > 240;
         glare = cv2.dilate(glare.astype(np.uint8), disk);
         corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
-        scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
-        scipy.misc.imsave('camera_data/gray.jpg', gray)
         thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
 
 
     # Working now
-    def process_image(self, image):
-        thresh = self.preprocess(image)
-        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for c in contours:
-            M = cv2.moments(c)
-            area = cv2.contourArea(c)
+    def process_image(self, *images):
+        left, right = [], []
+        for image in images:
+            im2, contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for c in contours:
+                M = cv2.moments(c)
+                area = cv2.contourArea(c)
 
-            if int(M["m00"]) != 0 and (self.area_lower < area < self.area_upper):
+                if int(M["m00"]) != 0 and (self.area_lower < area < self.area_upper):
 
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
-                closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
-                true_center = (closest[0], closest[1])
+                    cX = int(M["m10"] / M["m00"])
+                    cY = int(M["m01"] / M["m00"])
+                    closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
+                    Cx, Cy = closest[0], closest[1]
+                    true_center = (Cx, Cy)
 
-                ellipse = cv2.fitEllipse(c)
-                (x,y), (ma,MA), angle = ellipse
-                ellipse_aspect = ma/MA
-                ellipse_area = (np.pi * ma * MA)/4
+                    ellipse = cv2.fitEllipse(c)
+                    (x,y), (ma,MA), angle = ellipse
+                    ellipse_aspect = ma/MA
+                    ellipse_area = (np.pi * ma * MA)/4
 
-                rect = cv2.minAreaRect(c)
-                (x,y), (dim1, dim2), angle = rect
-                width, height = min(dim1, dim2), max(dim1, dim2)
-                box_area = width * height
-                box_aspect = width / height
-                box = cv2.boxPoints(rect)
-                box = np.int0(box)
+                    rect = cv2.minAreaRect(c)
+                    (x,y), (dim1, dim2), angle = rect
+                    width, height = min(dim1, dim2), max(dim1, dim2)
+                    box_area = width * height
+                    box = cv2.boxPoints(rect)
+                    box = np.int0(box)
 
-                if box_area < self.box_upper and self.ellipse_lower < ellipse_area < self.ellipse_upper:
-                    if image is self.right_image:
-                        self.right.append(true_center)
-                    else:
-                        self.left.append(true_center)
-                    cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                    cv2.circle(image, true_center, 10, (0, 0, 0), -1)
-                    cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                    cv2.drawContours(image,[box],0,(0,255,0),2)
-                    rows,cols = image.shape[:2]
-                    line = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01)
-                    [vx,vy,x,y] = line
-                    endpoint = np.vstack(self.endpoint(c, cX, cY)).squeeze()
-                    endpt = (endpoint[0], endpoint[1])
-                    cv2.circle(image, endpt, 10, (0, 170, 0), -1)
-                    self.report(c, area, cX, cY, closest, ellipse_area, box_area, line)
-                    lefty = int((-x*vy/vx) + y)
-                    righty = int(((cols-x)*vy/vx)+y)
-                    cv2.line(image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
-                # else:
-                #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
-                #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        if len(self.right) > 0 and len(self.right) == len(self.left):
-            pts3d = self.get_points_3d(self.left, self.right)
+                    if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+                        if image is self.corrected_right:
+                            right.append(true_center)
+                            cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                            cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
+                            cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
+                            cv2.drawContours(self.right_image,[box],0,(0,255,0),2)
+                            rows,cols = self.right_image.shape[:2]
+                            line = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01)
+                            [vx,vy,x,y] = line
+                            endpoint = np.vstack(self.endpoint(c, cX, cY)).squeeze()
+                            endpt = (endpoint[0], endpoint[1])
+                            cv2.circle(self.right_image, endpt, 10, (0, 170, 0), -1)
+                            self.report(c, area, cX, cY, closest, ellipse_area, box_area, line)
+                            lefty = int((-x*vy/vx) + y)
+                            righty = int(((cols-x)*vy/vx)+y)
+                            cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
+                        else:
+                            left.append(true_center)
+                    # else:
+                    #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
+                    #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                    #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        if len(right) > 0 and len(right) == len(left):
+            pts3d = self.get_points_3d(left, right)
             print("Found")
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
             pprint.pprint(self.pts)
             with open('needle_data/needle_points.p', "w+") as f:
                 pickle.dump(self.pts, f)
             rospy.signal_shutdown("Finished.")
-        return
             # scipy.misc.imsave('camera_data/fitted.jpg', image)
 
 
 if __name__ == "__main__":
     a = EmbeddedDetector()
     while 1:
-        if USE_SPLIT_VIEW:
-            if a.left_image is None or a.right_image is None:
-                continue
-            left = cv2.resize(a.left_image, (0, 0), fx=0.5, fy=0.5)
-            right = cv2.resize(a.right_image, (0, 0), fx=0.5, fy=0.5)
-            frame = np.hstack((left, right))
-        else:
-            frame = a.left_image
-            if frame is None:
-                continue
+        frame = a.right_image
+        if frame is None:
+            continue
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
