@@ -24,7 +24,9 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1500
         self.area_upper = 20000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 160000
+        self.ellipse_upper = 180000
+        self.residual_lower = 700
+        self.residual_upper = 2000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -69,16 +71,41 @@ class EmbeddedNeedleDetector():
         if self.right_image is not None:
             self.process_image(self.left_image)
 
-    def distance(self, point, x, y):
-        return cv2.pointPolygonTest(point, (x, y), True)
+    def compute_centroid(self, c, moments=None):
+        if not moments:
+            moments = cv2.moments(c)
+        if int(moments["m00"]) == 0:
+            return
+        cX = int(moments["m10"] / moments["m00"])
+        cY = int(moments["m01"] / moments["m00"])
+        return (cX, cY)
+
+    def distance(self, p1, p2):
+        return cv2.pointPolygonTest(p1, p2, True)
+
+    def distance_pt_to_contour(self, c, p):
+        """Computes the distance from a point to the center (not centroid) of contour"""
+        cX, cY = self.compute_centroid(c)
+        center = self.center(c, cX, cY)
+        return abs(self.distance(center, p))
+
+    def get_ellipse(self, c):
+        ellipse = cv2.fitEllipse(c)
+        (x,y), (ma,MA), angle = ellipse
+        ellipse_aspect = ma/MA
+        ellipse_area = (np.pi * ma * MA)/4
+        return (ellipse, ellipse_aspect, ellipse_area)
 
     def center(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: abs(self.distance(c, cX, cY)))
+        return min(contour_points, key=lambda point: abs(self.distance(point, (cX, cY))))
 
     def endpoint(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: self.distance(c, cX, cY))
+        return min(contour_points, key=lambda point: self.distance(point, (cX, cY)))
 
-    def report(self, contour, area, cX, cY, closest, ellipse_area):
+    def find_residual(self, contours, Cx, Cy):
+        return min(contours, key=lambda c: self.distance_pt_to_contour(c, (Cx, Cy)))
+
+    def report(self, area, cX, cY, closest, ellipse_area):
         print('Contour Detected')
         print('Contour Area:', area)
         print('Centroid', cX, cY)
@@ -88,16 +115,16 @@ class EmbeddedNeedleDetector():
 
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image_in = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
-        nonSat = s < 180
-        disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-        nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
-        v2 = v.copy()
-        v2[nonSat == 0] = 0
-        glare = v2 > 240;
-        glare = cv2.dilate(glare.astype(np.uint8), disk);
-        corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
+        corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
+        # h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
+        # nonSat = s < 180
+        # disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+        # nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
+        # v2 = v.copy()
+        # v2[nonSat == 0] = 0
+        # glare = v2 > 240;
+        # glare = cv2.dilate(glare.astype(np.uint8), disk);
+        # corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
@@ -109,38 +136,38 @@ class EmbeddedNeedleDetector():
         thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        residuals = []
+
         for c in contours:
             M = cv2.moments(c)
             area = cv2.contourArea(c)
-            if int(M["m00"]) != 0 and (self.area_lower < area < self.area_upper):
 
-            	cX = int(M["m10"] / M["m00"])
-            	cY = int(M["m01"] / M["m00"])
+            if (self.residual_lower < area < self.residual_upper):
+                residuals.append(c)
+
+            if (self.area_lower < area < self.area_upper):
+            	cX, cY = self.compute_centroid(c, M)
             	closest = np.vstack(self.center(c, cX, cY)).squeeze()
                 Cx, Cy = closest[0], closest[1]
             	true_center = (Cx, Cy)
 
-            	ellipse = cv2.fitEllipse(c)
-            	(x,y), (ma,MA), angle = ellipse
-            	ellipse_aspect = ma/MA
-            	ellipse_area = (np.pi * ma * MA)/4
+            	ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
+                """Contour is the big protruding part of the needle"""
             	if self.ellipse_lower < ellipse_area < self.ellipse_upper:
                     cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, true_center, 10, (0, 0, 0), -1)
-                    self.report(c, area, cX, cY, closest, ellipse_area)
+                    # self.report(area, cX, cY, closest, ellipse_area)
                     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     e = np.vstack(self.endpoint(c, cX, cY)).squeeze()
                     eX, eY = e[0], e[1]
                     cv2.circle(image, (eX, eY), 10, (0, 170, 0), -1)
-                    cv2.line(image, (Cx, Cy), (eX, eY), (255, 0, 0), 10)
+                    cv2.line(image, true_center, (eX, eY), (255, 0, 0), 10)
                 # else:
                 #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                 #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            # elif 500 < area < 2000:
-            #     cv2.drawContours(image, [c], -1, (0, 255, 255), 2)
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
