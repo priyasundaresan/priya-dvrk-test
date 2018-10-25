@@ -48,11 +48,10 @@ class EmbeddedDetector:
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1600
+        self.area_lower = 1500
         self.area_upper = 20000
-        self.box_upper = 40000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 150000
+        self.ellipse_upper = 160000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -118,24 +117,26 @@ class EmbeddedDetector:
             points_3d.append(pt)
         return points_3d
 
-    def closest_to_centroid(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: abs(cv2.pointPolygonTest(c,(cX,cY),True)))
+    def distance(self, point, x, y):
+        return cv2.pointPolygonTest(point, (x, y), True)
+
+    def center(self, contour_points, cX, cY):
+        return min(contour_points, key=lambda c: abs(self.distance(c, cX, cY)))
 
     def endpoint(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: (cv2.pointPolygonTest(c,(cX,cY),True)))
+        return min(contour_points, key=lambda c: self.distance(c, cX, cY))
 
-    def report(self, contour, area, cX, cY, closest, ellipse_area, box_area, line):
+    def report(self, contour, area, cX, cY, closest, ellipse_area):
         print('Contour Detected')
         print('Contour Area:', area)
         print('Centroid', cX, cY)
         print('Closest Point', closest[0], closest[1])
         print('Ellipse Area:', ellipse_area)
-        print('Box Area:', box_area)
         print('---')
 
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image_in = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
+        image_in = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
         h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
         nonSat = s < 180
         disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
@@ -163,7 +164,7 @@ class EmbeddedDetector:
 
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-                    closest = np.vstack(self.closest_to_centroid(c, cX, cY)).squeeze()
+                    closest = np.vstack(self.center(c, cX, cY)).squeeze()
                     Cx, Cy = closest[0], closest[1]
                     true_center = (Cx, Cy)
 
@@ -172,30 +173,18 @@ class EmbeddedDetector:
                     ellipse_aspect = ma/MA
                     ellipse_area = (np.pi * ma * MA)/4
 
-                    rect = cv2.minAreaRect(c)
-                    (x,y), (dim1, dim2), angle = rect
-                    width, height = min(dim1, dim2), max(dim1, dim2)
-                    box_area = width * height
-                    box = cv2.boxPoints(rect)
-                    box = np.int0(box)
-
                     if self.ellipse_lower < ellipse_area < self.ellipse_upper:
                         if image is self.corrected_right:
                             right.append(true_center)
                             cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                             cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
                             cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
-                            cv2.drawContours(self.right_image,[box],0,(0,255,0),2)
-                            rows,cols = self.right_image.shape[:2]
-                            line = cv2.fitLine(c, cv2.DIST_L2,0,0.01,0.01)
-                            [vx,vy,x,y] = line
-                            endpoint = np.vstack(self.endpoint(c, cX, cY)).squeeze()
-                            endpt = (endpoint[0], endpoint[1])
-                            cv2.circle(self.right_image, endpt, 10, (0, 170, 0), -1)
-                            self.report(c, area, cX, cY, closest, ellipse_area, box_area, line)
-                            lefty = int((-x*vy/vx) + y)
-                            righty = int(((cols-x)*vy/vx)+y)
-                            cv2.line(self.right_image,(cols-1,righty),(0,lefty),(255, 0, 0),2)
+                            cv2.drawContours(self.right_image, [c], 0, (0, 255, 255), 2)
+                            e = np.vstack(self.endpoint(c, cX, cY)).squeeze()
+                            eX, eY = e[0], e[1]
+                            cv2.circle(self.right_image, (eX, eY), 10, (0, 170, 0), -1)
+                            cv2.line(self.right_image, (Cx, Cy), (eX, eY), (255, 0, 0), 10)
+                            self.report(c, area, cX, cY, closest, ellipse_area)
                         else:
                             left.append(true_center)
                     # else:
