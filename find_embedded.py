@@ -11,7 +11,7 @@ import pprint
 import pickle
 
 USE_SAVED_IMAGES = False
-USE_SPLIT_VIEW = True
+USE_SPLIT_VIEW = False
 
 def convertStereo(u, v, disparity, info=None):
     """
@@ -40,7 +40,7 @@ def projectToPixel(pt, info=None):
     left, right = stereoModel.project3dToPixel((x, y, z))
     return (left, right)
 
-class EmbeddedDetector:
+class EmbeddedNeedleDetector:
 
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
@@ -101,7 +101,7 @@ class EmbeddedDetector:
             and returns a list of 3d points """
 
         # both lists must be of the same lenghth otherwise return None
-        left_points, right_points = sorted(left_points), sorted(right_points)
+        # left_points, right_points = sorted(left_points), sorted(right_points)
         print("\nLeft/Right points:")
         print(left_points, right_points)
         if len(left_points) != len(right_points):
@@ -117,76 +117,117 @@ class EmbeddedDetector:
             points_3d.append(pt)
         return points_3d
 
-    def distance(self, point, x, y):
-        return cv2.pointPolygonTest(point, (x, y), True)
+    def compute_centroid(self, contour, moments=None):
+        if not moments:
+            moments = cv2.moments(contour)
+        if int(moments["m00"]) == 0:
+            return
+        cx = int(moments["m10"] / moments["m00"])
+        cy = int(moments["m01"] / moments["m00"])
+        return (cx, cy)
 
-    def center(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: abs(self.distance(c, cX, cY)))
+    def distance(self, p1, p2):
+        return cv2.pointPolygonTest(p1, p2, True)
 
-    def endpoint(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda c: self.distance(c, cX, cY))
+    def distance_pt_to_contour(self, contour, x, y):
+        """Computes the distance from a point to the center (not centroid) of contour"""
+        cX, cy = self.compute_centroid(contour)
+        center = self.center(contour, cx, cy)
+        return abs(self.distance(center, (x, y)))
 
-    def report(self, contour, area, cX, cY, closest, ellipse_area):
+    def get_ellipse(self, c):
+        ellipse = cv2.fitEllipse(c)
+        (x,y), (ma,MA), angle = ellipse
+        ellipse_aspect = ma/MA
+        ellipse_area = (np.pi * ma * MA)/4
+        return (ellipse, ellipse_aspect, ellipse_area)
+
+    def center(self, contour, cx, cy):
+        return min(contour, key=lambda point: abs(self.distance(point, (cx, cy))))
+
+    def endpoint(self, contour, cx, cy):
+        sorted_points = sorted([list(i.squeeze()) for i in contour])
+        e1 = np.array(sorted_points[0]).reshape(1, 2)
+        e2 = np.array(sorted_points[-1]).reshape(1, 2)
+        pt = max([e1, e2], key=lambda e: abs(self.distance(e, (cx, cy))))
+        return pt
+
+    def find_residual(self, contours, CX, CY):
+        return min(contours, key=lambda c: self.distance_pt_to_contour(c, (CX, CY)))
+
+    def report(self, area, cx, cy, CX, CY, ellipse_area):
         print('Contour Detected')
         print('Contour Area:', area)
-        print('Centroid', cX, cY)
-        print('Closest Point', closest[0], closest[1])
+        print('Centroid', cx, cy)
+        print('Closest Point', CX, CY)
         print('Ellipse Area:', ellipse_area)
         print('---')
 
+
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image_in = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
-        nonSat = s < 180
-        disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-        nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
-        v2 = v.copy()
-        v2[nonSat == 0] = 0
-        glare = v2 > 240;
-        glare = cv2.dilate(glare.astype(np.uint8), disk);
-        corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
+        corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
+        # h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
+        # nonSat = s < 180
+        # disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+        # nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
+        # v2 = v.copy()
+        # v2[nonSat == 0] = 0
+        # glare = v2 > 240;
+        # glare = cv2.dilate(glare.astype(np.uint8), disk);
+        # corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
-        thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
 
 
     # Working now
     def process_image(self, *images):
+
         left, right = [], []
+
         for image in images:
+
             im2, contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
             for c in contours:
+
                 M = cv2.moments(c)
                 area = cv2.contourArea(c)
 
-                if int(M["m00"]) != 0 and (self.area_lower < area < self.area_upper):
+                if (self.area_lower < area < self.area_upper):
+                    cx, cy = self.compute_centroid(c, M)
+                    closest = np.vstack(self.center(c, cx, cy)).squeeze()
+                    CX, CY = closest[0], closest[1]
+                    true_center = (CX, CY)
 
-                    cX = int(M["m10"] / M["m00"])
-                    cY = int(M["m01"] / M["m00"])
-                    closest = np.vstack(self.center(c, cX, cY)).squeeze()
-                    Cx, Cy = closest[0], closest[1]
-                    true_center = (Cx, Cy)
-
-                    ellipse = cv2.fitEllipse(c)
-                    (x,y), (ma,MA), angle = ellipse
-                    ellipse_aspect = ma/MA
-                    ellipse_area = (np.pi * ma * MA)/4
+                    ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
                     if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+
+                        endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
+                        EX, EY = endpoint[0], endpoint[1]
+                        dx, dy = CX - EX, CY - EY
+                        OX, OY = CX + dx, CY + dy
+                        opposite = (OX, OY)
+
                         if image is self.corrected_right:
                             right.append(true_center)
-                            cv2.putText(self.right_image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                            right.append(endpoint)
+
+                            cv2.putText(self.right_image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                             cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
+                            self.report(area, cx, cy, CX, CY, ellipse_area)
                             cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
                             cv2.drawContours(self.right_image, [c], 0, (0, 255, 255), 2)
-                            e = np.vstack(self.endpoint(c, cX, cY)).squeeze()
-                            eX, eY = e[0], e[1]
-                            cv2.circle(self.right_image, (eX, eY), 10, (0, 170, 0), -1)
-                            cv2.line(self.right_image, (Cx, Cy), (eX, eY), (255, 0, 0), 10)
-                            self.report(c, area, cX, cY, closest, ellipse_area)
+
+                            cv2.circle(self.right_image, endpoint, 10, (0, 170, 0), -1)
+                            cv2.circle(self.right_image, opposite, 10, (0, 170, 0), -1)
+                            cv2.line(self.right_image, true_center, endpoint, (255, 0, 0), 10)
+                            cv2.line(self.right_image, true_center, opposite, (0, 255, 0), 10)
                         else:
                             left.append(true_center)
+                            left.append(endpoint)
                     # else:
                     #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                     #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
@@ -203,11 +244,18 @@ class EmbeddedDetector:
 
 
 if __name__ == "__main__":
-    a = EmbeddedDetector()
+    a = EmbeddedNeedleDetector()
     while 1:
-        frame = a.right_image
-        if frame is None:
-            continue
+        if USE_SPLIT_VIEW:
+            if a.left_image is None or a.right_image is None:
+                continue
+            left = cv2.resize(a.left_image, (0, 0), fx=0.5, fy=0.5)
+            right = cv2.resize(a.right_image, (0, 0), fx=0.5, fy=0.5)
+            frame = np.hstack((left, right))
+        else:
+            frame = a.right_image
+            if frame is None:
+                continue
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
