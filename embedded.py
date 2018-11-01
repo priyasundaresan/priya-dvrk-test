@@ -71,23 +71,23 @@ class EmbeddedNeedleDetector():
         if self.right_image is not None:
             self.process_image(self.left_image)
 
-    def compute_centroid(self, c, moments=None):
+    def compute_centroid(self, contour, moments=None):
         if not moments:
-            moments = cv2.moments(c)
+            moments = cv2.moments(contour)
         if int(moments["m00"]) == 0:
             return
-        cX = int(moments["m10"] / moments["m00"])
-        cY = int(moments["m01"] / moments["m00"])
-        return (cX, cY)
+        cx = int(moments["m10"] / moments["m00"])
+        cy = int(moments["m01"] / moments["m00"])
+        return (cx, cy)
 
     def distance(self, p1, p2):
         return cv2.pointPolygonTest(p1, p2, True)
 
-    def distance_pt_to_contour(self, c, p):
+    def distance_pt_to_contour(self, contour, x, y):
         """Computes the distance from a point to the center (not centroid) of contour"""
-        cX, cY = self.compute_centroid(c)
-        center = self.center(c, cX, cY)
-        return abs(self.distance(center, p))
+        cX, cy = self.compute_centroid(contour)
+        center = self.center(contour, cx, cy)
+        return abs(self.distance(center, (x, y)))
 
     def get_ellipse(self, c):
         ellipse = cv2.fitEllipse(c)
@@ -96,20 +96,24 @@ class EmbeddedNeedleDetector():
         ellipse_area = (np.pi * ma * MA)/4
         return (ellipse, ellipse_aspect, ellipse_area)
 
-    def center(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda point: abs(self.distance(point, (cX, cY))))
+    def center(self, contour, cx, cy):
+        return min(contour, key=lambda point: abs(self.distance(point, (cx, cy))))
 
-    def endpoint(self, contour_points, cX, cY):
-        return min(contour_points, key=lambda point: self.distance(point, (cX, cY)))
+    def endpoint(self, contour, cx, cy):
+        sorted_points = sorted([list(i.squeeze()) for i in contour])
+        e1 = np.array(sorted_points[0]).reshape(1, 2)
+        e2 = np.array(sorted_points[-1]).reshape(1, 2)
+        pt = max([e1, e2], key=lambda e: abs(self.distance(e, (cx, cy))))
+        return pt
 
-    def find_residual(self, contours, Cx, Cy):
-        return min(contours, key=lambda c: self.distance_pt_to_contour(c, (Cx, Cy)))
+    def find_residual(self, contours, CX, CY):
+        return min(contours, key=lambda c: self.distance_pt_to_contour(c, (CX, CY)))
 
-    def report(self, area, cX, cY, closest, ellipse_area):
+    def report(self, area, cx, cy, CX, CY, ellipse_area):
         print('Contour Detected')
         print('Contour Area:', area)
-        print('Centroid', cX, cY)
-        print('Closest Point', closest[0], closest[1])
+        print('Centroid', cx, cy)
+        print('Closest Point', CX, CY)
         print('Ellipse Area:', ellipse_area)
         print('---')
 
@@ -146,24 +150,32 @@ class EmbeddedNeedleDetector():
                 residuals.append(c)
 
             if (self.area_lower < area < self.area_upper):
-            	cX, cY = self.compute_centroid(c, M)
-            	closest = np.vstack(self.center(c, cX, cY)).squeeze()
-                Cx, Cy = closest[0], closest[1]
-            	true_center = (Cx, Cy)
+            	cx, cy = self.compute_centroid(c, M)
+            	closest = np.vstack(self.center(c, cx, cy)).squeeze()
+                CX, CY = closest[0], closest[1]
+            	true_center = (CX, CY)
 
             	ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
                 """Contour is the big protruding part of the needle"""
             	if self.ellipse_lower < ellipse_area < self.ellipse_upper:
-                    cv2.putText(image, "center", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+                    endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
+                    EX, EY = endpoint[0], endpoint[1]
+                    dx, dy = CX - EX, CY - EY
+                    OX, OY = CX + dx, CY + dy
+                    
+
+                    cv2.putText(image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, true_center, 10, (0, 0, 0), -1)
-                    # self.report(area, cX, cY, closest, ellipse_area)
+                    self.report(area, cx, cy, CX, CY, ellipse_area)
                     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
-                    e = np.vstack(self.endpoint(c, cX, cY)).squeeze()
-                    eX, eY = e[0], e[1]
-                    cv2.circle(image, (eX, eY), 10, (0, 170, 0), -1)
-                    cv2.line(image, true_center, (eX, eY), (255, 0, 0), 10)
+                    
+                    cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
+                    cv2.circle(image, (OX, OY), 10, (0, 170, 0), -1)
+                    cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
+                    cv2.line(image, true_center, (OX, OY), (0, 255, 0), 10)
                 # else:
                 #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
