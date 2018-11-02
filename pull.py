@@ -29,7 +29,7 @@ def home(psm, pos, rot):
 	psm.close_jaw()
 	time.sleep(.25)
 
-def pickup(psm, points, z_upper, z_final):
+def pull(psm, points, z_upper, z_final):
 	start, end = points[0], points[1]
 	x1, y1, z1 = start[0], start[1], start[2]
 	x2, y2, z2 = end[0], end[1], z_upper
@@ -40,13 +40,13 @@ def pickup(psm, points, z_upper, z_final):
 	psm.open_jaw()
 	print("Lowering...")
 	time.sleep(.25)
-	psm.move(PyKDL.Vector(x1, y1, z1+0.002))
+	psm.move(PyKDL.Vector(x1, y1, z1))
 	time.sleep(.25)
 	print("Grasping...")
 	psm.close_jaw()
 	time.sleep(.25)
 	print("Grasped...")
-	psm.move(PyKDL.Vector(x2, y2, z_upper))
+	psm.move(PyKDL.Vector(x2, y2, z1 + 0.005))
 	time.sleep(.25)
 	print("Pulling...")
 	psm.open_jaw()
@@ -56,7 +56,7 @@ def pickup(psm, points, z_upper, z_final):
 if __name__ == '__main__':
 
 	psm2 = robot.robot('PSM2')
-	kdl_pose = psm2.get_current_position().p
+	kdl_pose = psm2.get_current_position()
 	print("Current Position:")
 	pprint.pprint(kdl_pose)
 
@@ -77,9 +77,14 @@ if __name__ == '__main__':
 	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
+	sideways = PyKDL.Rotation(-0.729557, -0.555194, -0.399383,
+    						-0.583987, 0.201772, 0.786287,
+    						-0.355958, 0.806875, -0.47143)
+
 
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
+	# home(psm2, pos, rot)
 	home(psm2, pos, rot)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
@@ -104,7 +109,7 @@ if __name__ == '__main__':
 		pprint.pprint(world_to_psm2)
 
 		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, world_to_psm2.tolist(), z_upper, z_lower)
+		# pull(psm2, world_to_psm2.tolist(), z_upper, z_lower)
 
 	else:
 		""" Solve for the transform between endoscope to PSM2 """
@@ -112,6 +117,6 @@ if __name__ == '__main__':
 		needle_to_psm2 = transform.transform_data("Endoscope", "PSM2",needle_points, TE_2)
 
 		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+		pull(psm2, needle_to_psm2.tolist()[:2], z_upper, z_lower)
 
 	home(psm2, pos, rot)

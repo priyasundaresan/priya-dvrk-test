@@ -21,7 +21,7 @@ class EmbeddedNeedleDetector():
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1500
+        self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
@@ -120,15 +120,6 @@ class EmbeddedNeedleDetector():
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        # h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
-        # nonSat = s < 180
-        # disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-        # nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
-        # v2 = v.copy()
-        # v2[nonSat == 0] = 0
-        # glare = v2 > 240;
-        # glare = cv2.dilate(glare.astype(np.uint8), disk);
-        # corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
@@ -172,10 +163,10 @@ class EmbeddedNeedleDetector():
                     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     
-                    cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
-                    cv2.circle(image, (OX, OY), 10, (0, 170, 0), -1)
-                    cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
-                    cv2.line(image, true_center, (OX, OY), (0, 255, 0), 10)
+                    # cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
+                    cv2.circle(image, (OX, OY), 10, (0, 0, 0), -1)
+                    # cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
+                    cv2.line(image, true_center, (OX, OY), (0, 0, 0), 10)
                 # else:
                 #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)

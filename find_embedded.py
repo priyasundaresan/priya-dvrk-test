@@ -11,7 +11,7 @@ import pprint
 import pickle
 
 USE_SAVED_IMAGES = False
-USE_SPLIT_VIEW = False
+USE_SPLIT_VIEW = True
 
 def convertStereo(u, v, disparity, info=None):
     """
@@ -48,10 +48,10 @@ class EmbeddedNeedleDetector:
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1500
+        self.area_lower = 1700
         self.area_upper = 20000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 160000
+        self.ellipse_upper = 180000
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -149,6 +149,7 @@ class EmbeddedNeedleDetector:
         sorted_points = sorted([list(i.squeeze()) for i in contour])
         e1 = np.array(sorted_points[0]).reshape(1, 2)
         e2 = np.array(sorted_points[-1]).reshape(1, 2)
+        print(self.get_ellipse(contour)[2])
         pt = max([e1, e2], key=lambda e: abs(self.distance(e, (cx, cy))))
         return pt
 
@@ -167,15 +168,10 @@ class EmbeddedNeedleDetector:
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        # h, s, v = cv2.split(cv2.cvtColor(image_in, cv2.COLOR_RGB2HSV))
-        # nonSat = s < 180
-        # disk = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-        # nonSat = cv2.erode(nonSat.astype(np.uint8), disk)
-        # v2 = v.copy()
-        # v2[nonSat == 0] = 0
-        # glare = v2 > 240;
-        # glare = cv2.dilate(glare.astype(np.uint8), disk);
-        # corrected = cv2.inpaint(image_in, glare, 5, cv2.INPAINT_NS)
+        if image is self.left_image:
+            scipy.misc.imsave("camera_data/left_corrected.jpg", corrected)
+        else:
+            scipy.misc.imsave("camera_data/right_corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
@@ -185,6 +181,7 @@ class EmbeddedNeedleDetector:
     def process_image(self, *images):
 
         left, right = [], []
+        residuals = []
 
         for image in images:
 
@@ -213,7 +210,7 @@ class EmbeddedNeedleDetector:
 
                         if image is self.corrected_right:
                             right.append(true_center)
-                            right.append(endpoint)
+                            right.append(opposite)
 
                             cv2.putText(self.right_image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                             cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
@@ -221,19 +218,34 @@ class EmbeddedNeedleDetector:
                             cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
                             cv2.drawContours(self.right_image, [c], 0, (0, 255, 255), 2)
 
-                            cv2.circle(self.right_image, endpoint, 10, (0, 170, 0), -1)
-                            cv2.circle(self.right_image, opposite, 10, (0, 170, 0), -1)
-                            cv2.line(self.right_image, true_center, endpoint, (255, 0, 0), 10)
-                            cv2.line(self.right_image, true_center, opposite, (0, 255, 0), 10)
+                            # cv2.circle(self.right_image, endpoint, 10, (255, 255, 255), -1)
+                            cv2.circle(self.right_image, opposite, 10, (0, 0, 0), -1)
+                            # cv2.line(self.right_image, true_center, endpoint, (255, 255, 255), 10)
+                            cv2.line(self.right_image, true_center, opposite, (0, 0, 0), 10)
                         else:
                             left.append(true_center)
-                            left.append(endpoint)
+                            left.append(opposite)
+
+                            cv2.putText(self.left_image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                            cv2.circle(self.left_image, true_center, 10, (0, 0, 0), -1)
+                            self.report(area, cx, cy, CX, CY, ellipse_area)
+                            cv2.ellipse(self.left_image, ellipse, (0, 0, 255), 2)
+                            cv2.drawContours(self.left_image, [c], 0, (0, 255, 255), 2)
+
+                            # cv2.circle(self.left_image, endpoint, 10, (255, 255, 255), -1)
+                            cv2.circle(self.left_image, opposite, 10, (0, 0, 0), -1)
+                            # cv2.line(self.left_image, true_center, endpoint, (255, 255, 255), 10)
+                            cv2.line(self.left_image, true_center, opposite, (0, 0, 0), 10)
+                else:
+                    residuals.append(c)
                     # else:
                     #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                     #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                 
         if len(right) > 0 and len(right) == len(left):
+            for pair in zip(right, left):
+                print(self.distance(np.array(pair[0]).reshape(1, 2), (pair[1])))
             pts3d = self.get_points_3d(left, right)
             print("Found")
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
