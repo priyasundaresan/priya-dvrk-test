@@ -60,7 +60,7 @@ def get_transform(inpt, outpt, data_in, data_out):
     return T
 
 def transform_data(inpt, outpt, data_in, T, data_out=None):
-    print("\nTransforming {0} --> {1} Transform Matrix".format(inpt, outpt))
+    print("\nTransforming {0} --> {1}".format(inpt, outpt))
     expected = transform(data_in, T)
     print(expected)
     if data_out is not None:
