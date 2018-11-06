@@ -9,9 +9,24 @@ from sensor_msgs.msg import Image, CameraInfo
 import time
 import pprint
 import pickle
+import transform
+import read_camera
 
 USE_SAVED_IMAGES = False
 USE_SPLIT_VIEW = True
+
+def get_stereo_transform():
+    endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
+    camera_info = list(read_camera.load_all('camera_data/camera_info.p'))
+    left_chesspts = np.matrix(list(read_camera.load_all('camera_data/left_chesspts'))[0])
+    right_chesspts = np.matrix(list(read_camera.load_all('camera_data/right_chesspts'))[0])
+
+    z = np.zeros((25, 1))
+    left_chesspts = np.hstack((left_chesspts, z))
+    right_chesspts = np.hstack((right_chesspts, z))
+
+    TL_R = transform.get_transform("Left Camera", "Right Camera", left_chesspts, right_chesspts, verbose=False)
+    return TL_R
 
 class EmbeddedNeedleDetector():
 
@@ -27,6 +42,7 @@ class EmbeddedNeedleDetector():
         self.ellipse_upper = 180000
         self.residual_lower = 700
         self.residual_upper = 2000
+        self.TL_R = get_stereo_transform()
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -58,8 +74,6 @@ class EmbeddedNeedleDetector():
             self.right_image = cv2.imread('embedded_images/left4.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        if self.left_image is not None:
-            self.process_image(self.right_image)
             
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -131,14 +145,14 @@ class EmbeddedNeedleDetector():
         thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        residuals = []
+        # residuals = []
 
         for c in contours:
             M = cv2.moments(c)
             area = cv2.contourArea(c)
 
-            if (self.residual_lower < area < self.residual_upper):
-                residuals.append(c)
+            # if (self.residual_lower < area < self.residual_upper):
+            #     residuals.append(c)
 
             if (self.area_lower < area < self.area_upper):
             	cx, cy = self.compute_centroid(c, M)
@@ -155,12 +169,23 @@ class EmbeddedNeedleDetector():
                     EX, EY = endpoint[0], endpoint[1]
                     dx, dy = CX - EX, CY - EY
                     OX, OY = CX + dx, CY + dy
-                    
 
+                    # Need (OX, OY), (CX, CY) in the right frame
+                    opp_array = np.array([OX, OY, 0])
+                    center_array = np.array([CX, CY, 0])
+                    left_data = np.matrix([opp_array, center_array])
+
+                    right_data = transform.transform_data("Left Camera", "Right Camera", left_data, self.TL_R, data_out=None, verbose=False)
+                    right_OX, right_OY = int(right_data[0, 0]), int(right_data[0, 1])
+                    right_CX, right_CY = int(right_data[1, 0]), int(right_data[1, 1])
+                    
+                    cv2.circle(self.right_image, (right_OX, right_OY), 10, (0, 0, 0), -1)
+                    cv2.circle(self.right_image, (right_CX, right_CY), 10, (0, 0, 0), -1)
+                    cv2.line(self.right_image, (right_OX, right_OY), (right_CX, right_CY), (0, 0, 0), 10)
                     cv2.putText(image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, true_center, 10, (0, 0, 0), -1)
                     cv2.circle(image, (cx, cy), 10, (255, 255, 255), -1)
-                    self.report(area, cx, cy, CX, CY, ellipse_area)
+                    # self.report(area, cx, cy, CX, CY, ellipse_area)
                     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     
