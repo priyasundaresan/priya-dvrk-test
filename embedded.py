@@ -60,7 +60,7 @@ class EmbeddedNeedleDetector():
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         if self.left_image is not None:
             self.process_image(self.right_image)
-            
+
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
             return
