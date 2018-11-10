@@ -28,7 +28,34 @@ def get_stereo_transform():
     TL_R = transform.get_transform("Left Camera", "Right Camera", left_chesspts, right_chesspts, verbose=False)
     return TL_R
 
-class EmbeddedNeedleDetector():
+def convertStereo(u, v, disparity, info=None):
+    """
+    Converts two pixel coordinates u and v along with the disparity to give PointStamped
+    """
+    stereoModel = image_geometry.StereoCameraModel()
+    if info is None:
+        with open("camera_data/camera_info.p", "rb") as f:
+            info = pickle.load(f)
+    stereoModel.fromCameraInfo(info['l'], info['r'])
+    (x,y,z) = stereoModel.projectPixelTo3d((u,v), disparity)
+
+    cameraPoint = PointStamped()
+    cameraPoint.header.frame_id = info['l'].header.frame_id
+    cameraPoint.header.stamp = rospy.Time.now()
+    cameraPoint.point = Point(x,y,z)
+    return cameraPoint
+
+def projectToPixel(pt, info=None):
+    x, y, z = pt
+    if info is None:
+        with open("camera_data/camera_info.p", "rb") as f:
+            info = pickle.load(f)
+    stereoModel = image_geometry.StereoCameraModel()
+    stereoModel.fromCameraInfo(info['l'], info['r'])
+    left, right = stereoModel.project3dToPixel((x, y, z))
+    return (left, right)
+
+class EmbeddedNeedleDetector:
 
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
@@ -40,8 +67,6 @@ class EmbeddedNeedleDetector():
         self.area_upper = 20000
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
-        self.residual_lower = 700
-        self.residual_upper = 2000
         self.TL_R = get_stereo_transform()
 
         #========SUBSCRIBERS========#
@@ -71,10 +96,10 @@ class EmbeddedNeedleDetector():
         if rospy.is_shutdown():
             return
         if USE_SAVED_IMAGES:
-            self.right_image = cv2.imread('embedded_images/left4.jpg')
+            self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            
+
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
             return
@@ -84,6 +109,27 @@ class EmbeddedNeedleDetector():
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         if self.right_image is not None:
             self.process_image(self.left_image)
+
+    def get_points_3d(self, left_points, right_points):
+        """ this method assumes that corresponding points are in the right order
+            and returns a list of 3d points """
+
+        # both lists must be of the same lenghth otherwise return None
+        # left_points, right_points = sorted(left_points), sorted(right_points)
+        print("\nLeft/Right points:")
+        print(left_points, right_points)
+        if len(left_points) != len(right_points):
+            rospy.logerror("The number of left points and the number of right points is not the same")
+            return None
+
+        points_3d = []
+        for i in range(len(left_points)):
+            a = left_points[i]
+            b = right_points[i]
+            disparity = abs(a[0]-b[0])
+            pt = convertStereo(a[0], a[1], disparity, self.info)
+            points_3d.append(pt)
+        return points_3d
 
     def compute_centroid(self, contour, moments=None):
         if not moments:
@@ -117,6 +163,7 @@ class EmbeddedNeedleDetector():
         sorted_points = sorted([list(i.squeeze()) for i in contour])
         e1 = np.array(sorted_points[0]).reshape(1, 2)
         e2 = np.array(sorted_points[-1]).reshape(1, 2)
+        print(self.get_ellipse(contour)[2])
         pt = max([e1, e2], key=lambda e: abs(self.distance(e, (cx, cy))))
         return pt
 
@@ -131,9 +178,10 @@ class EmbeddedNeedleDetector():
         print('Ellipse Area:', ellipse_area)
         print('---')
 
+
     def preprocess(self, image):
-    	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        corrected = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
+        image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
@@ -141,6 +189,9 @@ class EmbeddedNeedleDetector():
 
     # Working now
     def process_image(self, image):
+
+        left, right = [], []
+        residuals = []
 
         thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -155,15 +206,15 @@ class EmbeddedNeedleDetector():
             #     residuals.append(c)
 
             if (self.area_lower < area < self.area_upper):
-            	cx, cy = self.compute_centroid(c, M)
-            	closest = np.vstack(self.center(c, cx, cy)).squeeze()
+                cx, cy = self.compute_centroid(c, M)
+                closest = np.vstack(self.center(c, cx, cy)).squeeze()
                 CX, CY = closest[0], closest[1]
-            	true_center = (CX, CY)
+                true_center = (CX, CY)
 
-            	ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
+                ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
                 """Contour is the big protruding part of the needle"""
-            	if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+                if self.ellipse_lower < ellipse_area < self.ellipse_upper:
 
                     endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
                     EX, EY = endpoint[0], endpoint[1]
@@ -178,18 +229,24 @@ class EmbeddedNeedleDetector():
                     right_data = transform.transform_data("Left Camera", "Right Camera", left_data, self.TL_R, data_out=None, verbose=False)
                     right_OX, right_OY = int(right_data[0, 0]), int(right_data[0, 1])
                     right_CX, right_CY = int(right_data[1, 0]), int(right_data[1, 1])
+
+                    left.append(true_center)
+                    left.append((OX, OY))
+                    right.append((right_CX, right_CY))
+                    right.append((right_OX, right_OY))
+
+                    self.report(area, cx, cy, CX, CY, ellipse_area)
                     
                     cv2.putText(self.right_image, "center", (right_CX - 20, right_CY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2) 
                     cv2.circle(self.right_image, (right_OX, right_OY), 10, (255, 0, 0), -1)
                     cv2.circle(self.right_image, (right_CX, right_CY), 10, (0, 0, 0), -1)
                     cv2.line(self.right_image, (right_OX, right_OY), (right_CX, right_CY), (0, 0, 0), 10)
+                    
                     cv2.putText(image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, true_center, 10, (0, 0, 0), -1)
                     cv2.circle(image, (cx, cy), 10, (255, 255, 255), -1)
-                    self.report(area, cx, cy, CX, CY, ellipse_area)
                     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
-                    
                     # cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
                     cv2.circle(image, (OX, OY), 10, (255, 0, 0), -1)
                     # cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
@@ -198,6 +255,18 @@ class EmbeddedNeedleDetector():
                 #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
                 #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                 #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        if len(right) > 0 and len(right) == len(left):
+            for pair in zip(right, left):
+                print(self.distance(np.array(pair[0]).reshape(1, 2), (pair[1])))
+            pts3d = self.get_points_3d(left, right)
+            print("Found")
+            self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
+            pprint.pprint(self.pts)
+            with open('needle_data/needle_points.p', "w+") as f:
+                pickle.dump(self.pts, f)
+            rospy.signal_shutdown("Finished.")
+
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
@@ -209,7 +278,7 @@ if __name__ == "__main__":
             right = cv2.resize(a.right_image, (0, 0), fx=0.5, fy=0.5)
             frame = np.hstack((left, right))
         else:
-            frame = a.left_image
+            frame = a.right_image
             if frame is None:
                 continue
         cv2.imshow('frame', frame)

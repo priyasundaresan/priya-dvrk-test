@@ -92,7 +92,6 @@ class EllipseDetector:
         # scipy.misc.imsave("camera_data/corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        scipy.misc.imsave('camera_data/thresh.jpg', thresh)
         return thresh
 
 
