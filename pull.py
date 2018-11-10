@@ -42,7 +42,7 @@ def pull(psm, points, z_upper, z_final):
 		psm.open_jaw()
 		print("Lowering...")
 		time.sleep(.25)
-		psm.move(PyKDL.Vector(x1, y1 + 0.003, z1 - 0.003))
+		psm.move(PyKDL.Vector(x1, y1, z1))
 		time.sleep(.25)
 		print("Grasping...")
 		psm.close_jaw()

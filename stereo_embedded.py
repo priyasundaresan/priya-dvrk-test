@@ -133,8 +133,8 @@ class EmbeddedNeedleDetector():
 
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        corrected = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
-        gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
+        # corrected = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
+        gray = cv2.cvtColor(image_in, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
 
