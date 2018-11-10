@@ -112,4 +112,4 @@ if __name__ == '__main__':
 		""" Move to needle centers, pcik them up, and release them """
 		pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-	home(psm2, pos, rot)
+	home(psm2, pos, rot) 
