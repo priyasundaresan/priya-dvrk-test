@@ -9,9 +9,24 @@ from sensor_msgs.msg import Image, CameraInfo
 import time
 import pprint
 import pickle
+import transform
+import read_camera
 
 USE_SAVED_IMAGES = False
 USE_SPLIT_VIEW = True
+
+def get_stereo_transform():
+    endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
+    camera_info = list(read_camera.load_all('camera_data/camera_info.p'))
+    left_chesspts = np.matrix(list(read_camera.load_all('camera_data/left_chesspts'))[0])
+    right_chesspts = np.matrix(list(read_camera.load_all('camera_data/right_chesspts'))[0])
+
+    z = np.zeros((25, 1))
+    left_chesspts = np.hstack((left_chesspts, z))
+    right_chesspts = np.hstack((right_chesspts, z))
+
+    TL_R = transform.get_transform("Left Camera", "Right Camera", left_chesspts, right_chesspts, verbose=False)
+    return TL_R
 
 def convertStereo(u, v, disparity, info=None):
     """
@@ -48,10 +63,11 @@ class EmbeddedNeedleDetector:
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 1700
+        self.area_lower = 3000
         self.area_upper = 20000
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
+        self.TL_R = get_stereo_transform()
 
         #========SUBSCRIBERS========#
         # image subscribers
@@ -83,10 +99,6 @@ class EmbeddedNeedleDetector:
             self.right_image = cv2.imread('right_checkerboard.jpg')
         else:
             self.right_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        if self.left_image is not None:
-            self.corrected_left = self.preprocess(self.left_image)
-            self.corrected_right = self.preprocess(self.right_image)
-            self.process_image(self.corrected_left, self.corrected_right)
 
     def left_image_callback(self, msg):
         if rospy.is_shutdown():
@@ -95,6 +107,8 @@ class EmbeddedNeedleDetector:
             self.left_image = cv2.imread('left_checkerboard.jpg')
         else:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        if self.right_image is not None:
+            self.process_image(self.left_image)
 
     def get_points_3d(self, left_points, right_points):
         """ this method assumes that corresponding points are in the right order
@@ -168,81 +182,80 @@ class EmbeddedNeedleDetector:
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        if image is self.left_image:
-            scipy.misc.imsave("camera_data/left_corrected.jpg", corrected)
-        else:
-            scipy.misc.imsave("camera_data/right_corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh
 
 
     # Working now
-    def process_image(self, *images):
+    def process_image(self, image):
 
         left, right = [], []
         residuals = []
 
-        for image in images:
+        thresh = self.preprocess(image)
+        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            im2, contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # residuals = []
 
-            for c in contours:
+        for c in contours:
+            M = cv2.moments(c)
+            area = cv2.contourArea(c)
 
-                M = cv2.moments(c)
-                area = cv2.contourArea(c)
+            # if (self.residual_lower < area < self.residual_upper):
+            #     residuals.append(c)
 
-                if (self.area_lower < area < self.area_upper):
-                    cx, cy = self.compute_centroid(c, M)
-                    closest = np.vstack(self.center(c, cx, cy)).squeeze()
-                    CX, CY = closest[0], closest[1]
-                    true_center = (CX, CY)
+            if (self.area_lower < area < self.area_upper):
+                cx, cy = self.compute_centroid(c, M)
+                closest = np.vstack(self.center(c, cx, cy)).squeeze()
+                CX, CY = closest[0], closest[1]
+                true_center = (CX, CY)
 
-                    ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
+                ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
-                    if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+                """Contour is the big protruding part of the needle"""
+                if self.ellipse_lower < ellipse_area < self.ellipse_upper:
 
-                        endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
-                        EX, EY = endpoint[0], endpoint[1]
-                        dx, dy = CX - EX, CY - EY
-                        OX, OY = CX + dx, CY + dy
-                        opposite = (OX, OY)
+                    endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
+                    EX, EY = endpoint[0], endpoint[1]
+                    dx, dy = CX - EX, CY - EY
+                    OX, OY = CX + dx, CY + dy
 
-                        if image is self.corrected_right:
-                            right.append(true_center)
-                            right.append(opposite)
+                    # Need (OX, OY), (CX, CY) in the right frame
+                    opp_array = np.array([OX, OY, 0])
+                    center_array = np.array([CX, CY, 0])
+                    left_data = np.matrix([opp_array, center_array])
 
-                            cv2.putText(self.right_image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                            cv2.circle(self.right_image, true_center, 10, (0, 0, 0), -1)
-                            self.report(area, cx, cy, CX, CY, ellipse_area)
-                            cv2.ellipse(self.right_image, ellipse, (0, 0, 255), 2)
-                            cv2.drawContours(self.right_image, [c], 0, (0, 255, 255), 2)
+                    right_data = transform.transform_data("Left Camera", "Right Camera", left_data, self.TL_R, data_out=None, verbose=False)
+                    right_OX, right_OY = int(right_data[0, 0]), int(right_data[0, 1])
+                    right_CX, right_CY = int(right_data[1, 0]), int(right_data[1, 1])
 
-                            # cv2.circle(self.right_image, endpoint, 10, (255, 255, 255), -1)
-                            cv2.circle(self.right_image, opposite, 10, (0, 0, 0), -1)
-                            # cv2.line(self.right_image, true_center, endpoint, (255, 255, 255), 10)
-                            cv2.line(self.right_image, true_center, opposite, (0, 0, 0), 10)
-                        else:
-                            left.append(true_center)
-                            left.append(opposite)
+                    left.append(true_center)
+                    left.append((OX, OY))
+                    right.append((right_CX, right_CY))
+                    right.append((right_OX, right_OY))
 
-                            cv2.putText(self.left_image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                            cv2.circle(self.left_image, true_center, 10, (0, 0, 0), -1)
-                            self.report(area, cx, cy, CX, CY, ellipse_area)
-                            cv2.ellipse(self.left_image, ellipse, (0, 0, 255), 2)
-                            cv2.drawContours(self.left_image, [c], 0, (0, 255, 255), 2)
+                    self.report(area, cx, cy, CX, CY, ellipse_area)
+                    
+                    cv2.putText(self.right_image, "center", (right_CX - 20, right_CY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2) 
+                    cv2.circle(self.right_image, (right_OX, right_OY), 10, (255, 0, 0), -1)
+                    cv2.circle(self.right_image, (right_CX, right_CY), 10, (0, 0, 0), -1)
+                    cv2.line(self.right_image, (right_OX, right_OY), (right_CX, right_CY), (0, 0, 0), 10)
+                    
+                    cv2.putText(image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.circle(image, true_center, 10, (0, 0, 0), -1)
+                    cv2.circle(image, (cx, cy), 10, (255, 255, 255), -1)
+                    cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                    cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
+                    # cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
+                    cv2.circle(image, (OX, OY), 10, (255, 0, 0), -1)
+                    # cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
+                    cv2.line(image, true_center, (OX, OY), (0, 0, 0), 10)
+                # else:
+                #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
+                #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-                            # cv2.circle(self.left_image, endpoint, 10, (255, 255, 255), -1)
-                            cv2.circle(self.left_image, opposite, 10, (0, 0, 0), -1)
-                            # cv2.line(self.left_image, true_center, endpoint, (255, 255, 255), 10)
-                            cv2.line(self.left_image, true_center, opposite, (0, 0, 0), 10)
-                else:
-                    residuals.append(c)
-                    # else:
-                    #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
-                    #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                    #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                
         if len(right) > 0 and len(right) == len(left):
             for pair in zip(right, left):
                 print(self.distance(np.array(pair[0]).reshape(1, 2), (pair[1])))

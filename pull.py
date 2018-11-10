@@ -3,7 +3,7 @@ import pprint
 import numpy as np
 import PyKDL
 import transform
-import read_chessboard
+import read_camera
 import rigid_transform
 import read_needle
 import time
@@ -29,34 +29,36 @@ def home(psm, pos, rot):
 	psm.close_jaw()
 	time.sleep(.25)
 
-def pickup(psm, points, z_upper, z_final):
-	start, end = points[0], points[1]
-	x1, y1, z1 = start[0], start[1], start[2]
-	x2, y2, z2 = end[0], end[1], z_upper
-	print("Moving to:")
-	print(start)
-	psm.move(PyKDL.Vector(x1, y1, z_upper))
-	time.sleep(.25)
-	psm.open_jaw()
-	print("Lowering...")
-	time.sleep(.25)
-	psm.move(PyKDL.Vector(x1, y1, z1+0.002))
-	time.sleep(.25)
-	print("Grasping...")
-	psm.close_jaw()
-	time.sleep(.25)
-	print("Grasped...")
-	psm.move(PyKDL.Vector(x2, y2, z_upper))
-	time.sleep(.25)
-	print("Pulling...")
-	psm.open_jaw()
-	time.sleep(.25)
+def pull(psm, points, z_upper, z_final):
+	points = [points[i:i + 2] for i in range(0, len(points), 2)]
+	for pair in points:
+		start, end = pair[0], pair[1]
+		x1, y1, z1 = start[0], start[1], start[2]
+		x2, y2, z2 = end[0], end[1], z_upper
+		print("Moving to:")
+		print(start)
+		psm.move(PyKDL.Vector(x1, y1, z_upper))
+		time.sleep(.25)
+		psm.open_jaw()
+		print("Lowering...")
+		time.sleep(.25)
+		psm.move(PyKDL.Vector(x1, y1, z1))
+		time.sleep(.25)
+		print("Grasping...")
+		psm.close_jaw()
+		time.sleep(.25)
+		print("Grasped...")
+		psm.move(PyKDL.Vector(x2, y2, z1 + 0.005))
+		time.sleep(.25)
+		print("Pulling...")
+		psm.open_jaw()
+		time.sleep(.25)
 
 
 if __name__ == '__main__':
 
 	psm2 = robot.robot('PSM2')
-	kdl_pose = psm2.get_current_position().p
+	kdl_pose = psm2.get_current_position()
 	print("Current Position:")
 	pprint.pprint(kdl_pose)
 
@@ -77,15 +79,20 @@ if __name__ == '__main__':
 	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
+	sideways = PyKDL.Rotation(-0.729557, -0.555194, -0.399383,
+    						-0.583987, 0.201772, 0.786287,
+    						-0.355958, 0.806875, -0.47143)
+
 
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
+	# home(psm2, pos, rot)
 	home(psm2, pos, rot)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
 	psm2_calibration_data = list(transform.load_all('world/psm2_recordings.txt'))
 	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
-	endoscope_calibration_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
+	endoscope_calibration_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
 
 	""" Get the coordinates of most recently found needle centers (in endoscope frame) """
 	needle_points = np.matrix(list(read_needle.load_all('needle_data/needle_points.p'))[0])
@@ -103,8 +110,8 @@ if __name__ == '__main__':
 		world_to_psm2 = transform.transform_data("World", "PSM2", needle_to_world, TW_2)
 		pprint.pprint(world_to_psm2)
 
-		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, world_to_psm2.tolist(), z_upper, z_lower)
+		""" Move to needle centers, pick them up, and release them """
+		pull(psm2, world_to_psm2.tolist(), z_upper, z_lower)
 
 	else:
 		""" Solve for the transform between endoscope to PSM2 """
@@ -112,6 +119,6 @@ if __name__ == '__main__':
 		needle_to_psm2 = transform.transform_data("Endoscope", "PSM2",needle_points, TE_2)
 
 		""" Move to needle centers, pcik them up, and release them """
-		pickup(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+		pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
 	home(psm2, pos, rot)

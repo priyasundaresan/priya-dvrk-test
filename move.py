@@ -3,7 +3,7 @@ import pprint
 import numpy as np
 import PyKDL
 import transform
-import read_chessboard
+import read_camera
 import rigid_transform
 import read_needle
 import time
@@ -68,7 +68,7 @@ if __name__ == '__main__':
 	# For white background:
 	z_lower = -0.1233
 	# For phantom background:
-	# z_lower = -0.128
+	# z_lower = -0.126
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
 	psm2_calibration_data = list(transform.load_all('world/psm2_recordings.txt'))
 	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
-	endoscope_calibration_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
+	endoscope_calibration_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
 
 	""" Get the coordinates of most recently found needle centers (in endoscope frame) """
 	needle_points = np.matrix(list(read_needle.load_all('needle_data/needle_points.p'))[0])

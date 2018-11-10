@@ -2,7 +2,7 @@ import pickle
 import pprint
 import numpy as np
 import rigid_transform
-import read_chessboard
+import read_camera
 
 def generate_world():
     w = []
@@ -53,17 +53,19 @@ def error(m1, m2):
         errors.append(np.linalg.norm(m1[i] - m2[i]))
     return np.mean(errors)
 
-def get_transform(inpt, outpt, data_in, data_out):
-    print("\n{0} --> {1} Transformation Matrix".format(inpt, outpt))
+def get_transform(inpt, outpt, data_in, data_out, verbose=True):
     T = rigid_transform.solve_for_rigid_transformation(data_in, data_out)
-    print(T)
+    if verbose:
+        print("\n{0} --> {1} Transformation Matrix".format(inpt, outpt))
+        print(T)
     return T
 
-def transform_data(inpt, outpt, data_in, T, data_out=None):
-    print("\nTransforming {0} --> {1} Transform Matrix".format(inpt, outpt))
+def transform_data(inpt, outpt, data_in, T, data_out=None, verbose=True):
     expected = transform(data_in, T)
-    print(expected)
-    if data_out is not None:
+    if verbose:
+        print("\nTransforming {0} --> {1}".format(inpt, outpt))
+        print(expected)
+    if data_out is not None and verbose:
         print("Actual {0} Data".format(outpt))
         print(data_out)
         print("Associated Error: " + str(error(expected, data_out)))
