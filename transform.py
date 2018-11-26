@@ -78,7 +78,7 @@ if __name__ == '__main__':
     psm2_data = list(load_all('world/psm2_recordings.txt'))
     psm2_matrix = psm_data_to_matrix(psm2_data)
 
-    endoscope_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
+    endoscope_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
 
     T2_E = get_transform("PSM2", "Endoscope", psm2_matrix, endoscope_matrix)
     TE_2 = get_transform("Endoscope", "PSM2", endoscope_matrix, psm2_matrix)
