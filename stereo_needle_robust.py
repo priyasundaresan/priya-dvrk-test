@@ -13,7 +13,7 @@ import transform
 import read_camera
 
 USE_SAVED_IMAGES = False
-USE_SPLIT_VIEW = True
+USE_SPLIT_VIEW = False
 
 def get_stereo_transform():
     endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
@@ -222,7 +222,7 @@ if __name__ == "__main__":
             right = cv2.resize(a.right_image, (0, 0), fx=0.5, fy=0.5)
             frame = np.hstack((left, right))
         else:
-            frame = a.right_image
+            frame = a.left_image
             if frame is None:
                 continue
         cv2.imshow('frame', frame)
