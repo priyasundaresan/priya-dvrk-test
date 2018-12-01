@@ -3,7 +3,7 @@ import pprint
 import numpy as np
 import PyKDL
 import transform
-import read_chessboard
+import read_camera
 import rigid_transform
 import read_needle
 import time
