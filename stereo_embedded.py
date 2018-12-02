@@ -13,7 +13,7 @@ import transform
 import read_camera
 
 USE_SAVED_IMAGES = False
-USE_SPLIT_VIEW = True
+USE_SPLIT_VIEW = False
 
 def get_stereo_transform():
     endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
@@ -40,7 +40,7 @@ class EmbeddedNeedleDetector():
         self.area_upper = 20000
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
-        self.residual_lower = 600
+        self.residual_lower = 250
         self.residual_upper = 2000
         self.TL_R = get_stereo_transform()
 
@@ -144,9 +144,11 @@ class EmbeddedNeedleDetector():
 
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # corrected = np.uint8(cv2.pow(image_in/255.0, 1.2) * 255)
+        corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
+        scipy.misc.imsave("camera_data/gamma_corrected.jpg", corrected)
         gray = cv2.cvtColor(image_in, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        scipy.misc.imsave("camera_data/thresh.jpg", thresh)
         return thresh
 
 
@@ -158,6 +160,9 @@ class EmbeddedNeedleDetector():
 
         # All potential smaller-end needle protrusions
         residuals = [c for c in contours if self.residual_lower < cv2.contourArea(c) < self.residual_upper]
+
+        for r in residuals:
+            cv2.drawContours(image, [r], 0, (0, 255, 0), 2)
 
         for c in contours:
                         # Get moments and area for given contour
@@ -217,10 +222,17 @@ class EmbeddedNeedleDetector():
                         # Compute points in right camera frame (residual center, contour center, pull point)
                         left_center = np.matrix([cx, cy, 0])
                         left_pull = np.matrix([pull_x, pull_y, 0])
-                        right_center = transform.transform_data("Left Frame", "Right Frame", left_center, self.TL_R, verbose=True)
-                        right_pull = transform.transform_data("Left", "Right", left_pull, self.TL_R, verbose=True)
-                        pprint.pprint(right_center)
-                        pprint.pprint(right_pull)
+                        right_center = transform.transform_data("Left Frame", "Right Frame", left_center, self.TL_R, verbose=False)
+                        right_pull = transform.transform_data("Left", "Right", left_pull, self.TL_R, verbose=False)
+                        right_cx = int(right_center[0, 0])
+                        right_cy = int(right_center[0, 1])
+                        right_pull_x = int(right_pull[0, 0])
+                        right_pull_y = int(right_pull[0, 1])
+                        cv2.circle(self.right_image, (right_cx, right_cy), 10, (0, 0, 0), -1)
+                        cv2.circle(self.right_image, (right_pull_x, right_pull_y), 10, (0, 0, 0), -1)
+                        cv2.line(self.right_image, (right_cx, right_cy), (right_pull_x, right_pull_y), (0, 0, 0), 2)
+            # elif 250 < area < 500:
+            #     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
