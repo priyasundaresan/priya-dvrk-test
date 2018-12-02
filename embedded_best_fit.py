@@ -83,7 +83,11 @@ class EmbeddedNeedleDetector():
 
     def distance(self, p1, p2):
         """Computes the distance between two points"""
-        return cv2.pointPolygonTest(p1, p2, True)
+        if type(p1) == np.ndarray:
+            return cv2.pointPolygonTest(p1, p2, True)
+        x1, y1 = p1
+        x2, y2 = p2
+        return np.sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2))
 
     def distance_pt_to_contour(self, contour, x, y):
         """Computes the distance from a point to the center (not centroid) of contour"""
@@ -155,9 +159,9 @@ class EmbeddedNeedleDetector():
 
                 # Compute the centroid (center of mass) and center of the given needle
             	centroid_x, centroid_y = self.compute_centroid(c, M)
-            	closest = np.vstack(self.center(c, centroid_x, cy)).squeeze()
-                CX, CY = closest[0], closest[1]
-            	center = (CX, CY)
+            	closest = np.vstack(self.center(c, centroid_x, centroid_y)).squeeze()
+                cx, cy = closest[0], closest[1]
+            	center = (cx, cy)
 
                 # Fit an ellipse to the contour
             	ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
@@ -168,16 +172,17 @@ class EmbeddedNeedleDetector():
                     # Report/display the large residual
                     cv2.putText(image, "centroid", (centroid_x - 20, centroid_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, center, 10, (0, 0, 0), -1)
-                    cv2.circle(image, (centroid_x, centroid_y), 10, (255, 255, 255), -1)
-                    self.report(area, centroid_x, centroid_y, CX, CY, ellipse_area)
-                    cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                    # cv2.circle(image, (centroid_x, centroid_y), 10, (255, 255, 255), -1)
+                    self.report(area, centroid_x, centroid_y, cx, cy, ellipse_area)
+                    # cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     
                     # Find the corresponding small residual and markup
                     residual = self.find_residual(center, residuals)
-                    r_centroid_x, r_centroid_y = self.compute_centroid(residual)
+                    residual_centroid = self.compute_centroid(residual)
+                    cv2.putText(image, "residual", residual_centroid, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
                     cv2.drawContours(image, [residual], 0, (255, 255, 255), 2)
-                    cv2.circle(image, (r_centroid_x, r_centroid_y), 10, (255, 0, 0), -1)
+                    cv2.circle(image, residual_centroid, 10, (255, 0, 0), -1)
                     
                     # Fit a line to the small residual
                     [vx, vy, x, y] = cv2.fitLine(residual, cv2.DIST_L2,0,0.01,0.01)
@@ -190,13 +195,13 @@ class EmbeddedNeedleDetector():
                     """Finds a pull point (relative to contour center) in the direction
                     of the best fit line of the smaller residual and opposite 
                     (not towards) the smaller residual """
-                    if abs(r_centroid_x - (CX + dx)) < abs(r_centroid_x - CX) \
-                    and abs(r_centroid_y - (CY + dy)) < abs(r_centroid_y - CY):
+                    if self.distance(residual_centroid, center) > \
+                       self.distance(residual_centroid, (cx + dx, cy + dy)):
                         dx, dy = -dx, -dy
-                    pull_x = int(CX + 100*dx)
-                    pull_y = int(CY + 100*dy)
-                    cv2.circle(image, (pull_x, pull_y), 10, (255, 255, 100), -1)
-                    cv2.line(image, center, (pull_x, pull_y), (0, 255, 0), 2)
+                    pull_x = int(cx + 100*dx)
+                    pull_y = int(cy + 100*dy)
+                    cv2.circle(image, (pull_x, pull_y), 10, (0, 0, 0), -1)
+                    cv2.line(image, center, (pull_x, pull_y), (0, 0, 0), 2)
 
                 
 if __name__ == "__main__":

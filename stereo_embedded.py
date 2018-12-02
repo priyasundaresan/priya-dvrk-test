@@ -36,11 +36,11 @@ class EmbeddedNeedleDetector():
         self.right_image = None
         self.info = {'l': None, 'r': None, 'b': None, 'd': None}
         self.plane = None
-        self.area_lower = 3000
+        self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
-        self.residual_lower = 700
+        self.residual_lower = 600
         self.residual_upper = 2000
         self.TL_R = get_stereo_transform()
 
@@ -95,12 +95,17 @@ class EmbeddedNeedleDetector():
         return (cx, cy)
 
     def distance(self, p1, p2):
-        return cv2.pointPolygonTest(p1, p2, True)
+        """Computes the distance between two points"""
+        if type(p1) == np.ndarray:
+            return cv2.pointPolygonTest(p1, p2, True)
+        x1, y1 = p1
+        x2, y2 = p2
+        return np.sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2))
 
     def distance_pt_to_contour(self, contour, x, y):
         """Computes the distance from a point to the center (not centroid) of contour"""
-        cX, cy = self.compute_centroid(contour)
-        center = self.center(contour, cx, cy)
+        centroid_x, centroid_y = self.compute_centroid(contour)
+        center = self.center(contour, centroid_x, centroid_y)
         return abs(self.distance(center, (x, y)))
 
     def get_ellipse(self, c):
@@ -120,8 +125,14 @@ class EmbeddedNeedleDetector():
         pt = max([e1, e2], key=lambda e: abs(self.distance(e, (cx, cy))))
         return pt
 
-    def find_residual(self, contours, CX, CY):
-        return min(contours, key=lambda c: self.distance_pt_to_contour(c, (CX, CY)))
+    def find_residual(self, point, contours):
+        """Finds the closest contour from a given list to the current point.
+        Used for locating the smaller residual corresponding to the large protruding part
+        of a needle"""
+        x, y = point
+        if len(contours) > 0:
+            return min(contours, key=lambda c: self.distance_pt_to_contour(c, x, y))
+        return None
 
     def report(self, area, cx, cy, CX, CY, ellipse_area):
         print('Contour Detected')
@@ -145,59 +156,71 @@ class EmbeddedNeedleDetector():
         thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # residuals = []
+        # All potential smaller-end needle protrusions
+        residuals = [c for c in contours if self.residual_lower < cv2.contourArea(c) < self.residual_upper]
 
         for c in contours:
+                        # Get moments and area for given contour
             M = cv2.moments(c)
             area = cv2.contourArea(c)
 
-            # if (self.residual_lower < area < self.residual_upper):
-            #     residuals.append(c)
-
+            # Throw out all non-needle contours
             if (self.area_lower < area < self.area_upper):
-            	cx, cy = self.compute_centroid(c, M)
-            	closest = np.vstack(self.center(c, cx, cy)).squeeze()
-                CX, CY = closest[0], closest[1]
-            	true_center = (CX, CY)
 
-            	ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
+                # Compute the centroid (center of mass) and center of the given needle
+                centroid_x, centroid_y = self.compute_centroid(c, M)
+                closest = np.vstack(self.center(c, centroid_x, centroid_y)).squeeze()
+                cx, cy = closest[0], closest[1]
+                center = (cx, cy)
+
+                # Fit an ellipse to the contour
+                ellipse, ellipse_aspect, ellipse_area = self.get_ellipse(c)
 
                 """Contour is the big protruding part of the needle"""
-            	if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+                if self.ellipse_lower < ellipse_area < self.ellipse_upper:
 
-                    endpoint = tuple(np.vstack(self.endpoint(c, cx, cy)).squeeze())
-                    EX, EY = endpoint[0], endpoint[1]
-                    dx, dy = CX - EX, CY - EY
-                    OX, OY = CX + dx, CY + dy
-
-                    # Need (OX, OY), (CX, CY) in the right frame
-                    opp_array = np.array([OX, OY, 0])
-                    center_array = np.array([CX, CY, 0])
-                    left_data = np.matrix([opp_array, center_array])
-
-                    right_data = transform.transform_data("Left Camera", "Right Camera", left_data, self.TL_R, data_out=None, verbose=False)
-                    right_OX, right_OY = int(right_data[0, 0]), int(right_data[0, 1])
-                    right_CX, right_CY = int(right_data[1, 0]), int(right_data[1, 1])
-                    
-                    cv2.putText(self.right_image, "center", (right_CX - 20, right_CY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2) 
-                    cv2.circle(self.right_image, (right_OX, right_OY), 10, (255, 0, 0), -1)
-                    cv2.circle(self.right_image, (right_CX, right_CY), 10, (0, 0, 0), -1)
-                    cv2.line(self.right_image, (right_OX, right_OY), (right_CX, right_CY), (0, 0, 0), 10)
-                    cv2.putText(image, "center", (cx - 20, cy - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                    cv2.circle(image, true_center, 10, (0, 0, 0), -1)
-                    cv2.circle(image, (cx, cy), 10, (255, 255, 255), -1)
-                    self.report(area, cx, cy, CX, CY, ellipse_area)
-                    cv2.ellipse(image, ellipse, (0, 0, 255), 2)
+                    # Report/display the large residual
+                    cv2.putText(image, "centroid", (centroid_x - 20, centroid_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.circle(image, center, 10, (255, 0, 0), -1)
+                    # cv2.circle(image, (centroid_x, centroid_y), 10, (255, 255, 255), -1)
+                    self.report(area, centroid_x, centroid_y, cx, cy, ellipse_area)
+                    # cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     
-                    # cv2.circle(image, (EX, EY), 10, (0, 170, 0), -1)
-                    cv2.circle(image, (OX, OY), 10, (255, 0, 0), -1)
-                    # cv2.line(image, true_center, (EX, EY), (255, 0, 0), 10)
-                    cv2.line(image, true_center, (OX, OY), (0, 0, 0), 10)
-                # else:
-                #     cv2.drawContours(image, [c], -1, (0, 0, 255), 2)
-                #     cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                #     cv2.putText(image, "REJECTED", (cX - 20, cY - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    # Find the corresponding small residual and markup
+                    residual = self.find_residual(center, residuals)
+                    if residual is not None:
+                        residual_centroid = self.compute_centroid(residual)
+                        cv2.putText(image, "residual", residual_centroid, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
+                        cv2.drawContours(image, [residual], 0, (255, 255, 255), 2)
+                        cv2.circle(image, residual_centroid, 10, (255, 0, 0), -1)
+                        
+                        # Fit a line to the small residual
+                        [vx, vy, x, y] = cv2.fitLine(residual, cv2.DIST_L2,0,0.01,0.01)
+                        dx, dy = np.asscalar(vx), np.asscalar(vy)
+                        # rows, cols = image.shape[:2]
+                        # lefty = int((-x*vy/vx) + y)
+                        # righty = int(((cols-x)*vy/vx)+y)
+                        # cv2.line(image,(cols-1,righty),(0,lefty),(0,255,0),2)
+
+                        """Finds a pull point (relative to contour center) in the direction
+                        of the best fit line of the smaller residual and opposite 
+                        (not towards) the smaller residual """
+                        if self.distance(residual_centroid, center) > \
+                           self.distance(residual_centroid, (cx + dx, cy + dy)):
+                            dx, dy = -dx, -dy
+                        pull_x = int(cx + 100*dx)
+                        pull_y = int(cy + 100*dy)
+                        cv2.circle(image, (pull_x, pull_y), 10, (0, 0, 0), -1)
+                        cv2.line(image, center, (pull_x, pull_y), (0, 0, 0), 2)
+
+                        # Compute points in right camera frame (residual center, contour center, pull point)
+                        left_center = np.matrix([cx, cy, 0])
+                        left_pull = np.matrix([pull_x, pull_y, 0])
+                        right_center = transform.transform_data("Left Frame", "Right Frame", left_center, self.TL_R, verbose=True)
+                        right_pull = transform.transform_data("Left", "Right", left_pull, self.TL_R, verbose=True)
+                        pprint.pprint(right_center)
+                        pprint.pprint(right_pull)
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
