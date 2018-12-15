@@ -13,7 +13,7 @@ import transform
 import read_camera
 
 USE_SAVED_IMAGES = False
-USE_SPLIT_VIEW = False
+USE_SPLIT_VIEW = True
 
 def get_stereo_transform():
     endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
