@@ -1,3 +1,6 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import image_geometry
 import rospy
 from geometry_msgs.msg import PointStamped, Point
@@ -134,7 +137,7 @@ class EllipseDetector:
         for image in images:
             inverted = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             thresh = cv2.threshold(inverted, 127, 255, cv2.THRESH_BINARY_INV)[1]
-            scipy.misc.imsave('camera_data/thresh.jpg', thresh)
+            # scipy.misc.imsave('camera_data/thresh.jpg', thresh)
             im2, contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             for c in contours:
                 M = cv2.moments(c)
