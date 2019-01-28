@@ -120,10 +120,15 @@ class ChessDetector:
         right_gray = cv2.cvtColor(self.right_image,cv2.COLOR_BGR2GRAY)
         x, y = 5, 5
         ret, left_corners = cv2.findChessboardCorners(left_gray, (x,y), flags=1)
+        print('left')
         pprint.pprint(left_corners)
         ret, right_corners = cv2.findChessboardCorners(right_gray, (x,y), flags=1)
+        print('right')
+        pprint.pprint(right_corners)
         self.left_image_annotated = cv2.drawChessboardCorners(self.left_image, (5, 5), left_corners, ret)
         scipy.misc.imsave('camera_data/left_checkerboard_annotated.jpg', self.left_image_annotated)
+        self.right_image_annotated = cv2.drawChessboardCorners(self.right_image, (5, 5), right_corners, ret)
+        scipy.misc.imsave('camera_data/right_checkerboard_annotated.jpg', self.right_image_annotated)
         left, right, = [], []
         for i in range(len(left_corners)):
             left.append([left_corners[i][0][0], left_corners[i][0][1]])
