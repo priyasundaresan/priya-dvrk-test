@@ -1,3 +1,6 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import image_geometry
 import rospy
 from geometry_msgs.msg import PointStamped, Point

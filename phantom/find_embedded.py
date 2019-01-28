@@ -1,3 +1,6 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import image_geometry
 import rospy
 from geometry_msgs.msg import PointStamped, Point
@@ -168,10 +171,10 @@ class EmbeddedNeedleDetector:
     def preprocess(self, image):
         image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        if image is self.left_image:
-            scipy.misc.imsave("camera_data/left_corrected.jpg", corrected)
-        else:
-            scipy.misc.imsave("camera_data/right_corrected.jpg", corrected)
+        # if image is self.left_image:
+        #     # scipy.misc.imsave("camera_data/left_corrected.jpg", corrected)
+        # else:
+        #     # scipy.misc.imsave("camera_data/right_corrected.jpg", corrected)
         gray = cv2.cvtColor(corrected, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
         return thresh

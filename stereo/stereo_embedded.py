@@ -1,3 +1,6 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import image_geometry
 import rospy
 from geometry_msgs.msg import PointStamped, Point
@@ -16,10 +19,10 @@ USE_SAVED_IMAGES = False
 USE_SPLIT_VIEW = True
 
 def get_stereo_transform():
-    endoscope_chesspts = list(read_camera.load_all('calibration/endoscope_chesspts.p'))
-    camera_info = list(read_camera.load_all('camera_data/camera_info.p'))
-    left_chesspts = np.matrix(list(read_camera.load_all('camera_data/left_chesspts'))[0])
-    right_chesspts = np.matrix(list(read_camera.load_all('camera_data/right_chesspts'))[0])
+    endoscope_chesspts = list(read_camera.load_all('../calibration/endoscope_chesspts.p'))
+    camera_info = list(read_camera.load_all('../camera_data/camera_info.p'))
+    left_chesspts = np.matrix(list(read_camera.load_all('../camera_data/left_chesspts'))[0])
+    right_chesspts = np.matrix(list(read_camera.load_all('../camera_data/right_chesspts'))[0])
 
     z = np.zeros((25, 1))
     left_chesspts = np.hstack((left_chesspts, z))
@@ -145,10 +148,10 @@ class EmbeddedNeedleDetector():
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        scipy.misc.imsave("camera_data/gamma_corrected.jpg", corrected)
+        # scipy.misc.imsave("camera_data/gamma_corrected.jpg", corrected)
         gray = cv2.cvtColor(image_in, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        scipy.misc.imsave("camera_data/thresh.jpg", thresh)
+        # scipy.misc.imsave("camera_data/thresh.jpg", thresh)
         return thresh
 
 
