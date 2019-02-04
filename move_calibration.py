@@ -65,7 +65,7 @@ if __name__ == '__main__':
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
 	psm2_calibration_data = list(transform.load_all('world/psm2_recordings.txt'))
 	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
-	endoscope_calibration_matrix = np.matrix(list(read_chessboard.load_all('world/endoscope_chesspts.p'))[0])
+	endoscope_calibration_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
 
 	world = transform.generate_world()
 
