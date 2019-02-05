@@ -65,21 +65,17 @@ if __name__ == '__main__':
 	home(psm2, pos, rot)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
-	psm2_calibration_data = list(transform.load_all('world/psm2_recordings.txt'))
-	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
-	endoscope_calibration_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
+	psm2_calibration_data = list(transform.load_all('utils/psm2_recordings.txt'))
+	psm2_calibration_matrix = transform.fit_to_plane(transform.psm_data_to_matrix(psm2_calibration_data))
+	endoscope_calibration_matrix = transform.fit_to_plane(np.matrix(list(read_camera.load_all('camera_data/endoscope_chesspts.p'))[0]))
 
 	world = transform.generate_world()
 
-	TE_W = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, world)
-	endo_to_world = transform.transform_data("Endoscope", "World", endoscope_calibration_matrix, TE_W)
-	pprint.pprint(endo_to_world)
-
-	TW_2 = rigid_transform.solve_for_rigid_transformation(world, psm2_calibration_matrix)
-	world_to_psm2 = transform.transform_data("World", "PSM2", endo_to_world, TW_2)
-	pprint.pprint(world_to_psm2)
+	TE_2 = transform.get_transform("Endoscope", "PSM2", endoscope_calibration_matrix, psm2_calibration_matrix)
+	psme_2 = transform.transform_data("Endoscope", "PSM2", endoscope_calibration_matrix, TE_2, psm2_calibration_matrix)
+	pprint.pprint(psme_2)
 
 	""" Move to chessboard corner, descend, come up,and go to next. """
-	move_to(psm2, world_to_psm2.tolist(), z_upper)
+	move_to(psm2, psme_2.tolist(), z_upper)
 
 	home(psm2, pos, rot)
