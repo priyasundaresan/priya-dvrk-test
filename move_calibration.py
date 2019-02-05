@@ -1,3 +1,5 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], './utils'))
 import robot
 import pprint
 import numpy as np
