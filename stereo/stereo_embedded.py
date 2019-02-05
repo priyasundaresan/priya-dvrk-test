@@ -44,7 +44,7 @@ class EmbeddedNeedleDetector():
         self.ellipse_lower = 1300
         self.ellipse_upper = 180000
         self.residual_lower = 250
-        self.residual_upper = 2000
+        self.residual_upper = 1200 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
 
         #========SUBSCRIBERS========#
@@ -137,7 +137,9 @@ class EmbeddedNeedleDetector():
             return min(contours, key=lambda c: self.distance_pt_to_contour(c, x, y))
         return None
 
-    def report(self, area, cx, cy, CX, CY, ellipse_area):
+    def report(self, area, cx, cy, CX, CY, ellipse_area, flag=None):
+        if flag is not None:
+            print(flag)
         print('Contour Detected')
         print('Contour Area:', area)
         print('Centroid', cx, cy)
@@ -191,13 +193,14 @@ class EmbeddedNeedleDetector():
                     cv2.putText(image, "centroid", (centroid_x - 20, centroid_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.circle(image, center, 10, (255, 0, 0), -1)
                     # cv2.circle(image, (centroid_x, centroid_y), 10, (255, 255, 255), -1)
-                    self.report(area, centroid_x, centroid_y, cx, cy, ellipse_area)
+                    self.report(area, centroid_x, centroid_y, cx, cy, ellipse_area, 'LARGE RESIDUAL')
                     # cv2.ellipse(image, ellipse, (0, 0, 255), 2)
                     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
                     
                     # Find the corresponding small residual and markup
                     residual = self.find_residual(center, residuals)
                     if residual is not None:
+                        print("SMALL RESIDUAL", cv2.contourArea(residual))
                         residual_centroid = self.compute_centroid(residual)
                         cv2.putText(image, "residual", residual_centroid, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
                         cv2.drawContours(image, [residual], 0, (255, 255, 255), 2)
