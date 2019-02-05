@@ -28,6 +28,7 @@ def home(psm, pos, rot):
 	time.sleep(.25)
 	psm.close_jaw()
 	time.sleep(.25)
+	return
 
 def move_to(psm, points, z_upper):
 	for point in points:
@@ -48,6 +49,7 @@ if __name__ == '__main__':
 	kdl_pose = psm2.get_current_position().p
 	print("Current Position:")
 	pprint.pprint(kdl_pose)
+	pprint.pprint(psm2.get_current_position().M)
 
 	""" An arbitrary z starting point that is not too close/far from the platform.
 	When the gripper picks up a needle, it moves up to this point and then releases the needle.
@@ -56,9 +58,9 @@ if __name__ == '__main__':
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
-	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
-						-0.00509171,    0.999786,   0.0200282,
-						 0.148609,   0.0205626,   -0.988682)
+	rot = PyKDL.Rotation(-0.990774,    0.102893,  -0.0882081,
+						0.102822,    0.994685,  0.00536036,
+						 0.0882908, -0.00375885,   -0.996088)
 
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
@@ -76,6 +78,6 @@ if __name__ == '__main__':
 	pprint.pprint(psme_2)
 
 	""" Move to chessboard corner, descend, come up,and go to next. """
-	move_to(psm2, psme_2.tolist(), z_upper)
+	# move_to(psm2, psme_2.tolist(), z_upper)
 
-	home(psm2, pos, rot)
+	# home(psm2, pos, rot)
