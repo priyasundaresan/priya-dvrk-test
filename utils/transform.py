@@ -1,6 +1,10 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '../'))
+sys.path.insert(1, os.path.join(sys.path[0], '../camera_data'))
 import pickle
 import pprint
 import numpy as np
+import scipy.linalg
 import rigid_transform
 import read_camera
 
@@ -8,7 +12,7 @@ def generate_world():
     w = []
     for i in range(5):
         for j in range(5):
-            w.append([float(j)/80, float(i)/80, 0.])
+            w.append([float(j)/90, float(i)/90, 0.])
     return np.matrix(w)
 
 
@@ -71,23 +75,31 @@ def transform_data(inpt, outpt, data_in, T, data_out=None, verbose=True):
         print("Associated Error: " + str(error(expected, data_out)))
     return expected
 
+def fit_to_plane(inpt):
+    X, Y, Z = inpt[:,0], inpt[:,1], inpt[:,2]
+    A = np.c_[X, Y, np.ones((inpt.shape[0], 1))]
+    coeff,_,_,_ = scipy.linalg.lstsq(A, Z)
+    z = np.asscalar(coeff[0])*X + np.asscalar(coeff[1])*Y + np.asscalar(coeff[2])
+    return np.hstack((X, Y, z))
+
 if __name__ == '__main__':
 
     world = generate_world()
 
-    psm2_data = list(load_all('world/psm2_recordings.txt'))
-    psm2_matrix = psm_data_to_matrix(psm2_data)
+    psm2_data = list(load_all('psm2_recordings.txt'))
+    psm2_matrix = fit_to_plane(psm_data_to_matrix(psm2_data))
 
-    endoscope_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
+    endoscope_matrix = np.matrix(list(read_camera.load_all('../camera_data/endoscope_chesspts.p'))[0])
+    endoscope_plane = fit_to_plane(endoscope_matrix)
 
-    T2_E = get_transform("PSM2", "Endoscope", psm2_matrix, endoscope_matrix)
-    TE_2 = get_transform("Endoscope", "PSM2", endoscope_matrix, psm2_matrix)
+    T2_E = get_transform("PSM2", "Endoscope", psm2_matrix, endoscope_plane)
+    TE_2 = get_transform("Endoscope", "PSM2", endoscope_plane, psm2_matrix)
 
-    psm2_e = transform_data("PSM2", "Endoscope", psm2_matrix, T2_E, endoscope_matrix)
-    psme_2 = transform_data("Endoscope", "PSM2", endoscope_matrix, TE_2, psm2_matrix)
+    psm2_e = transform_data("PSM2", "Endoscope", psm2_matrix, T2_E, endoscope_plane)
+    psme_2 = transform_data("Endoscope", "PSM2", endoscope_plane, TE_2, psm2_matrix)
 
     T2_W = get_transform("PSM2", "World", psm2_matrix, world)
     psm2_w = transform_data("PSM2", "World", psm2_matrix, T2_W, world)
 
-    TE_W = get_transform("Endoscope", "World", endoscope_matrix, world)
-    e_w = transform_data("Endoscope", "World", endoscope_matrix, TE_W, world)
+    TE_W = get_transform("Endoscope", "World", endoscope_plane, world)
+    e_w = transform_data("Endoscope", "World", endoscope_plane, TE_W, world)
