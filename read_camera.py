@@ -1,5 +1,9 @@
 import os,sys
+<<<<<<< HEAD
+sys.path.insert(1, os.path.join(sys.path[0], './utils'))
+=======
 sys.path.insert(1, os.path.join(sys.path[0], 'utils'))
+>>>>>>> fc629ea64f8be63a8b6090ba7754a786678c9fc2
 import pickle
 import pprint
 import numpy as np
