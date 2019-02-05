@@ -1,9 +1,5 @@
 import os,sys
-<<<<<<< HEAD
-sys.path.insert(1, os.path.join(sys.path[0], './utils'))
-=======
 sys.path.insert(1, os.path.join(sys.path[0], 'utils'))
->>>>>>> fc629ea64f8be63a8b6090ba7754a786678c9fc2
 import pickle
 import pprint
 import numpy as np
@@ -26,7 +22,7 @@ def print_cache(lst, heading):
 
 if __name__ == '__main__':
 
-	endoscope_chesspts = list(load_all('calibration/endoscope_chesspts.p'))
+	endoscope_chesspts = list(load_all('camera_data/endoscope_chesspts.p'))
 	# camera_info = list(load_all('camera_data/camera_info.p'))
 	left_chesspts = np.matrix(list(load_all('camera_data/left_chesspts'))[0])
 	right_chesspts = np.matrix(list(load_all('camera_data/right_chesspts'))[0])
