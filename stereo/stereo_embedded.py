@@ -42,8 +42,8 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 180000
-        self.residual_lower = 250
+        self.ellipse_upper = 190000 #play with this, was 180000 before
+        self.residual_lower = 400 #play with this, was 250 before
         self.residual_upper = 1200 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
 
@@ -150,10 +150,10 @@ class EmbeddedNeedleDetector():
     def preprocess(self, image):
     	image_in = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         corrected = np.uint8(cv2.pow(image_in/255.0, 1.4) * 255)
-        scipy.misc.imsave("camera_data/gamma_corrected.jpg", corrected)
+        # scipy.misc.imsave("camera_data/gamma_corrected.jpg", corrected)
         gray = cv2.cvtColor(image_in, cv2.COLOR_RGB2GRAY)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        scipy.misc.imsave("camera_data/thresh.jpg", thresh)
+        # scipy.misc.imsave("camera_data/thresh.jpg", thresh)
         return thresh
 
 

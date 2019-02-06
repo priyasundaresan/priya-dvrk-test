@@ -58,9 +58,9 @@ if __name__ == '__main__':
 
 	""" POSE PSM2 WAS CALIBRATED IN """
 	pos = PyKDL.Vector(-0.118749, 0.0203151, -0.111688)
-	rot = PyKDL.Rotation(-0.990774,    0.102893,  -0.0882081,
-						0.102822,    0.994685,  0.00536036,
-						 0.0882908, -0.00375885,   -0.996088)
+	rot = PyKDL.Rotation(-0.940475,    0.313929,   -0.130214,
+						0.330906,    0.933198,   -0.140157,
+						 0.0775163,   -0.174902,    -0.98153)
 
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
@@ -78,6 +78,6 @@ if __name__ == '__main__':
 	pprint.pprint(psme_2)
 
 	""" Move to chessboard corner, descend, come up,and go to next. """
-	# move_to(psm2, psme_2.tolist(), z_upper)
+	move_to(psm2, psme_2.tolist(), z_upper)
 
-	# home(psm2, pos, rot)
+	home(psm2, pos, rot)
