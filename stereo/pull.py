@@ -31,6 +31,7 @@ def home(psm, pos, rot):
 	time.sleep(.25)
 
 def pull(psm, points, z_upper, z_final):
+	time.sleep(4)
 	points = [points[i:i + 2] for i in range(0, len(points), 2)]
 	for pair in points:
 		start, end = pair[0], pair[1]
@@ -104,6 +105,6 @@ if __name__ == '__main__':
 	pprint.pprint(needle_to_psm2)
 
 	""" Move to needle centers, pcik them up, and release them """
-	# pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+	pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-	# home(psm2, pos, rot)
+	home(psm2, pos, rot)

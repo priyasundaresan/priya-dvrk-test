@@ -31,6 +31,33 @@ def get_stereo_transform():
     TL_R = transform.get_transform("Left Camera", "Right Camera", left_chesspts, right_chesspts, verbose=False)
     return TL_R
 
+def convertStereo(u, v, disparity, info=None):
+    """
+    Converts two pixel coordinates u and v along with the disparity to give PointStamped
+    """
+    stereoModel = image_geometry.StereoCameraModel()
+    if info is None:
+        with open("camera_data/camera_info.p", "rb") as f:
+            info = pickle.load(f)
+    stereoModel.fromCameraInfo(info['l'], info['r'])
+    (x,y,z) = stereoModel.projectPixelTo3d((u,v), disparity)
+
+    cameraPoint = PointStamped()
+    cameraPoint.header.frame_id = info['l'].header.frame_id
+    cameraPoint.header.stamp = rospy.Time.now()
+    cameraPoint.point = Point(x,y,z)
+    return cameraPoint
+
+def projectToPixel(pt, info=None):
+    x, y, z = pt
+    if info is None:
+        with open("camera_data/camera_info.p", "rb") as f:
+            info = pickle.load(f)
+    stereoModel = image_geometry.StereoCameraModel()
+    stereoModel.fromCameraInfo(info['l'], info['r'])
+    left, right = stereoModel.project3dToPixel((x, y, z))
+    return (left, right)
+
 class EmbeddedNeedleDetector():
 
     def __init__(self):
@@ -87,6 +114,27 @@ class EmbeddedNeedleDetector():
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         if self.right_image is not None:
             self.process_image(self.left_image)
+
+    def get_points_3d(self, left_points, right_points):
+        """ this method assumes that corresponding points are in the right order
+            and returns a list of 3d points """
+
+        # both lists must be of the same lenghth otherwise return None
+        # left_points, right_points = sorted(left_points), sorted(right_points)
+        print("\nLeft/Right points:")
+        print(left_points, right_points)
+        if len(left_points) != len(right_points):
+            rospy.logerror("The number of left points and the number of right points is not the same")
+            return None
+
+        points_3d = []
+        for i in range(len(left_points)):
+            a = left_points[i]
+            b = right_points[i]
+            disparity = abs(a[0]-b[0])
+            pt = convertStereo(a[0], a[1], disparity, self.info)
+            points_3d.append(pt)
+        return points_3d
 
     def compute_centroid(self, contour, moments=None):
         if not moments:
@@ -160,6 +208,8 @@ class EmbeddedNeedleDetector():
     # Working now
     def process_image(self, image):
 
+        left, right = [], []
+
         thresh = self.preprocess(image)
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -201,7 +251,6 @@ class EmbeddedNeedleDetector():
                     residual = self.find_residual(center, residuals)
                     if residual is not None:
                         print("SMALL RESIDUAL", cv2.contourArea(residual))
-                        print(self.get_ellipse(residual)[-2])
                         residual_centroid = self.compute_centroid(residual)
                         cv2.putText(image, "residual", residual_centroid, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
                         cv2.drawContours(image, [residual], 0, (255, 255, 255), 2)
@@ -238,8 +287,24 @@ class EmbeddedNeedleDetector():
                         cv2.circle(self.right_image, (right_cx, right_cy), 10, (0, 0, 0), -1)
                         cv2.circle(self.right_image, (right_pull_x, right_pull_y), 10, (0, 0, 0), -1)
                         cv2.line(self.right_image, (right_cx, right_cy), (right_pull_x, right_pull_y), (0, 0, 0), 2)
+
+                        left.append(center)
+                        left.append((pull_x, pull_y))
+                        right.append((right_cx, right_cy))
+                        right.append((right_pull_x, right_pull_y))
             # elif 250 < area < 500:
             #     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
+        if len(right) > 0 and len(right) == len(left):
+            for pair in zip(right, left):
+                print(self.distance(np.array(pair[0]).reshape(1, 2), (pair[1])))
+            pts3d = self.get_points_3d(left, right)
+            print("Found")
+            self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
+            pprint.pprint(self.pts)
+            with open('needle_data/needle_points.p', "w+") as f:
+                pickle.dump(self.pts, f)
+            rospy.signal_shutdown("Finished.")
+
 
 if __name__ == "__main__":
     a = EmbeddedNeedleDetector()
