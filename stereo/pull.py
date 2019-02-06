@@ -1,3 +1,6 @@
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import robot
 import pprint
 import numpy as np
@@ -14,8 +17,6 @@ Usage:
 Run 'python needle3d.py' to find the needle centers in view and get their 3d positions.
 Then run 'python move_psm_test.py' to move the PSM to those centers and pick up the needles.
 """
-
-USE_WORLD_TRANSFORM = False
 
 def home(psm, pos, rot):
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
@@ -90,35 +91,19 @@ if __name__ == '__main__':
 	home(psm2, pos, rot)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
-	psm2_calibration_data = list(transform.load_all('world/psm2_recordings.txt'))
-	psm2_calibration_matrix = transform.psm_data_to_matrix(psm2_calibration_data)
-	endoscope_calibration_matrix = np.matrix(list(read_camera.load_all('world/endoscope_chesspts.p'))[0])
+	psm2_calibration_data = list(transform.load_all('../utils/psm2_recordings.txt'))
+	psm2_calibration_matrix = transform.fit_to_plane(transform.psm_data_to_matrix(psm2_calibration_data))
+	endoscope_calibration_matrix = transform.fit_to_plane(np.matrix(list(read_camera.load_all('../camera_data/endoscope_chesspts.p'))[0]))
 
 	""" Get the coordinates of most recently found needle centers (in endoscope frame) """
 	needle_points = np.matrix(list(read_needle.load_all('needle_data/needle_points.p'))[0])
 
-	if USE_WORLD_TRANSFORM:
+	""" Solve for the transform between endoscope to PSM2 """
+	TE_2 = transform.get_transform("Endoscope", "PSM2", endoscope_calibration_matrix, psm2_calibration_matrix)
+	needle_to_psm2 = transform.transform_data("Endoscope", "PSM2", needle_points, TE_2)
+	pprint.pprint(needle_to_psm2)
 
-		world = transform.generate_world()
+	""" Move to needle centers, pcik them up, and release them """
+	# pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-		TE_W = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, world)
-		needle_to_world = transform.transform_data("Endoscope", "World", needle_points, TE_W)
-		needle_to_world[:,2] = 0.
-		pprint.pprint(needle_to_world)
-
-		TW_2 = rigid_transform.solve_for_rigid_transformation(world, psm2_calibration_matrix)
-		world_to_psm2 = transform.transform_data("World", "PSM2", needle_to_world, TW_2)
-		pprint.pprint(world_to_psm2)
-
-		""" Move to needle centers, pick them up, and release them """
-		pull(psm2, world_to_psm2.tolist(), z_upper, z_lower)
-
-	else:
-		""" Solve for the transform between endoscope to PSM2 """
-		TE_2 = rigid_transform.solve_for_rigid_transformation(endoscope_calibration_matrix, psm2_calibration_matrix)
-		needle_to_psm2 = transform.transform_data("Endoscope", "PSM2",needle_points, TE_2)
-
-		""" Move to needle centers, pcik them up, and release them """
-		pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
-
-	home(psm2, pos, rot)
+	# home(psm2, pos, rot)
