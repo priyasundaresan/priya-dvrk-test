@@ -69,7 +69,7 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
-        self.ellipse_upper = 190000 #play with this, was 180000 before
+        self.ellipse_upper = 210000 #play with this, was 180000 before
         self.residual_lower = 250 #play with this, was 250 before
         self.residual_upper = 2000 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
@@ -182,8 +182,17 @@ class EmbeddedNeedleDetector():
         of a needle"""
         x, y = point
         if len(contours) > 0:
-            return min(contours, key=lambda c: self.distance_pt_to_contour(c, x, y))
+            candidates = [c for c in contours if 150 < self.distance_pt_to_contour(c, x, y) < 400]
+            if candidates:
+                residual = min(candidates, key=lambda c: self.distance_pt_to_contour(c, x, y))
+                print('residual distance', self.distance_pt_to_contour(residual, x, y))
+                return residual
         return None
+        # x, y = point
+        # if len(contours) > 0:
+        #     return min(contours, key=lambda c: self.distance_pt_to_contour(c, x, y))
+        # return None
+
 
     def report(self, area, cx, cy, CX, CY, ellipse_area, flag=None):
         if flag is not None:
@@ -216,6 +225,8 @@ class EmbeddedNeedleDetector():
         # All potential smaller-end needle protrusions
         residuals = [c for c in contours if self.residual_lower < cv2.contourArea(c) < self.residual_upper]
 
+        not_found = True
+
         for r in residuals:
             cv2.drawContours(image, [r], 0, (0, 255, 0), 2)
 
@@ -225,7 +236,7 @@ class EmbeddedNeedleDetector():
             area = cv2.contourArea(c)
 
             # Throw out all non-needle contours
-            if (self.area_lower < area < self.area_upper):
+            if not_found and (self.area_lower < area < self.area_upper):
 
                 # Compute the centroid (center of mass) and center of the given needle
                 centroid_x, centroid_y = self.compute_centroid(c, M)
@@ -238,6 +249,8 @@ class EmbeddedNeedleDetector():
 
                 """Contour is the big protruding part of the needle"""
                 if self.ellipse_lower < ellipse_area < self.ellipse_upper:
+
+                    not_found = False
 
                     # Report/display the large residual
                     cv2.putText(image, "centroid", (centroid_x - 20, centroid_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
@@ -270,8 +283,8 @@ class EmbeddedNeedleDetector():
                         if self.distance(residual_centroid, center) > \
                            self.distance(residual_centroid, (cx + dx, cy + dy)):
                             dx, dy = -dx, -dy
-                        pull_x = int(cx + 100*dx)
-                        pull_y = int(cy + 100*dy)
+                        pull_x = int(cx + 250*dx)
+                        pull_y = int(cy + 250*dy)
                         cv2.circle(image, (pull_x, pull_y), 10, (0, 0, 0), -1)
                         cv2.line(image, center, (pull_x, pull_y), (0, 0, 0), 2)
 
@@ -295,8 +308,6 @@ class EmbeddedNeedleDetector():
             # elif 250 < area < 500:
             #     cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
         if len(right) > 0 and len(right) == len(left):
-            for pair in zip(right, left):
-                print(self.distance(np.array(pair[0]).reshape(1, 2), (pair[1])))
             pts3d = self.get_points_3d(left, right)
             print("Found")
             self.pts = [(p.point.x, p.point.y, p.point.z) for p in pts3d]
