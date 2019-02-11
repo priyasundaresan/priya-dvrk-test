@@ -42,7 +42,11 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
+<<<<<<< HEAD
         self.ellipse_upper = 210000 #play with this, was 180000 before
+=======
+        self.ellipse_upper = 195000 #play with this, was 180000 before
+>>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1
         self.residual_lower = 250 #play with this, was 250 before
         self.residual_upper = 2000 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
@@ -232,8 +236,8 @@ class EmbeddedNeedleDetector():
                         if self.distance(residual_centroid, center) > \
                            self.distance(residual_centroid, (cx + dx, cy + dy)):
                             dx, dy = -dx, -dy
-                        pull_x = int(cx + 100*dx)
-                        pull_y = int(cy + 100*dy)
+                        pull_x = int(cx + 200*dx)
+                        pull_y = int(cy + 200*dy)
                         cv2.circle(image, (pull_x, pull_y), 10, (0, 0, 0), -1)
                         cv2.line(image, center, (pull_x, pull_y), (0, 0, 0), 2)
 
