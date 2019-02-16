@@ -69,11 +69,11 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
-<<<<<<< HEAD:stereo/find.py
+# <<<<<<< HEAD:stereo/find.py
         self.ellipse_upper = 210000 #play with this, was 180000 before
-=======
-        self.ellipse_upper = 195000 #play with this, was 180000 before
->>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1:stereo/stereo_find_embedded_best_fit.py
+# =======
+#         self.ellipse_upper = 195000 #play with this, was 180000 before
+# >>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1:stereo/stereo_find_embedded_best_fit.py
         self.residual_lower = 250 #play with this, was 250 before
         self.residual_upper = 2000 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
@@ -231,8 +231,8 @@ class EmbeddedNeedleDetector():
 
         not_found = True
 
-        for r in residuals:
-            cv2.drawContours(image, [r], 0, (0, 255, 0), 2)
+        # for r in residuals:
+        #     cv2.drawContours(image, [r], 0, (0, 255, 0), 2)
 
         for c in contours:
                         # Get moments and area for given contour
@@ -262,7 +262,7 @@ class EmbeddedNeedleDetector():
                     # cv2.circle(image, (centroid_x, centroid_y), 10, (255, 255, 255), -1)
                     self.report(area, centroid_x, centroid_y, cx, cy, ellipse_area, 'LARGE RESIDUAL')
                     # cv2.ellipse(image, ellipse, (0, 0, 255), 2)
-                    cv2.drawContours(image, [c], 0, (0, 255, 255), 2)
+                    cv2.drawContours(image, [c], 0, (180, 30, 170), 5)
                     
                     # Find the corresponding small residual and markup
                     residual = self.find_residual(center, residuals)
@@ -270,7 +270,7 @@ class EmbeddedNeedleDetector():
                         print("SMALL RESIDUAL", cv2.contourArea(residual))
                         residual_centroid = self.compute_centroid(residual)
                         cv2.putText(image, "residual", residual_centroid, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
-                        cv2.drawContours(image, [residual], 0, (255, 255, 255), 2)
+                        cv2.drawContours(image, [residual], 0, (0, 255, 0), 5)
                         cv2.circle(image, residual_centroid, 10, (255, 0, 0), -1)
                         
                         # Fit a line to the small residual
@@ -287,13 +287,13 @@ class EmbeddedNeedleDetector():
                         if self.distance(residual_centroid, center) > \
                            self.distance(residual_centroid, (cx + dx, cy + dy)):
                             dx, dy = -dx, -dy
-<<<<<<< HEAD:stereo/find.py
-                        pull_x = int(cx + 250*dx)
-                        pull_y = int(cy + 250*dy)
-=======
-                        pull_x = int(cx + 200*dx)
-                        pull_y = int(cy + 200*dy)
->>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1:stereo/stereo_find_embedded_best_fit.py
+# <<<<<<< HEAD:stereo/find.py
+                        pull_x = int(cx + 300*dx)
+                        pull_y = int(cy + 300*dy)
+# =======
+#                         pull_x = int(cx + 200*dx)
+#                         pull_y = int(cy + 200*dy)
+# >>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1:stereo/stereo_find_embedded_best_fit.py
                         cv2.circle(image, (pull_x, pull_y), 10, (0, 0, 0), -1)
                         cv2.line(image, center, (pull_x, pull_y), (0, 0, 0), 2)
 

@@ -37,10 +37,10 @@ def pull(psm, points, z_upper, z_final):
 		start, end = pair[0], pair[1]
 		x1, y1, z1 = start[0], start[1], start[2]
 		x2, y2, z2 = end[0], end[1], end[2]
-		print("Moving to:")
-		print(start)
-		psm.move(PyKDL.Vector(x1, y1, z_upper))
-		time.sleep(.25)
+		# print("Moving to:")
+		# print(start)
+		# psm.move(PyKDL.Vector(x1, y1, z_upper))
+		# time.sleep(.25)
 		psm.open_jaw()
 		print("Lowering...")
 		time.sleep(.25)
@@ -50,11 +50,7 @@ def pull(psm, points, z_upper, z_final):
 		psm.close_jaw()
 		time.sleep(.25)
 		print("Grasped...")
-<<<<<<< HEAD
 		psm.move(PyKDL.Vector(x2, y2, z2))
-=======
-		psm.move(PyKDL.Vector(x2, y2, z1 + 0.002))
->>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1
 		time.sleep(.25)
 		print("Pulling...")
 		psm.open_jaw()
@@ -87,15 +83,17 @@ if __name__ == '__main__':
 	rot = PyKDL.Rotation(-0.988883, -0.00205771,   -0.148682,
 						-0.00509171,    0.999786,   0.0200282,
 						 0.148609,   0.0205626,   -0.988682)
-	sideways = PyKDL.Rotation(0.989348,  -0.136156,  -0.0515063,
-						-0.0981,   -0.362174,   -0.926934,
-						-0.105728,   0.0300513,  -0.0976141)
+
+	pos2 = PyKDL.Vector(-0.0972128,  -0.0170138,   -0.106974)
+	sideways = PyKDL.Rotation(  -0.453413,    0.428549,   -0.781513,
+     							-0.17203,    0.818259,    0.548505,
+     							0.874541,    0.383143,   -0.297286)
 
 
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
 	# home(psm2, pos, rot)
-	home(psm2, pos, rot)
+	home(psm2, pos2, sideways)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
 	psm2_calibration_data = list(transform.load_all('../utils/psm2_recordings.txt'))
@@ -113,4 +111,4 @@ if __name__ == '__main__':
 	""" Move to needle centers, pcik them up, and release them """
 	pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-	home(psm2, pos, rot)
+	home(psm2, pos2, rot)

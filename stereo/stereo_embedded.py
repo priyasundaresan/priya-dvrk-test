@@ -42,11 +42,11 @@ class EmbeddedNeedleDetector():
         self.area_lower = 1800
         self.area_upper = 20000
         self.ellipse_lower = 1300
-<<<<<<< HEAD
+# <<<<<<< HEAD
         self.ellipse_upper = 210000 #play with this, was 180000 before
-=======
-        self.ellipse_upper = 195000 #play with this, was 180000 before
->>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1
+# =======
+#         self.ellipse_upper = 195000 #play with this, was 180000 before
+# >>>>>>> 4d032d223969dc9f8c8777bfcf2e2dc2f63469e1
         self.residual_lower = 250 #play with this, was 250 before
         self.residual_upper = 2000 #play with this, was 2000 before
         self.TL_R = get_stereo_transform()
