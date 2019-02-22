@@ -288,8 +288,8 @@ class EmbeddedNeedleDetector():
                            self.distance(residual_centroid, (cx + dx, cy + dy)):
                             dx, dy = -dx, -dy
 # <<<<<<< HEAD:stereo/find.py
-                        pull_x = int(cx + 300*dx)
-                        pull_y = int(cy + 300*dy)
+                        pull_x = int(cx + 350*dx)
+                        pull_y = int(cy + 350*dy)
 # =======
 #                         pull_x = int(cx + 200*dx)
 #                         pull_y = int(cy + 200*dy)

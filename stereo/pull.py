@@ -31,7 +31,7 @@ def home(psm, pos, rot):
 	time.sleep(.25)
 
 def pull(psm, points, z_upper, z_final):
-	time.sleep(3)
+	time.sleep(1)
 	points = [points[i:i + 2] for i in range(0, len(points), 2)]
 	for pair in points:
 		start, end = pair[0], pair[1]
