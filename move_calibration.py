@@ -62,9 +62,14 @@ if __name__ == '__main__':
 						0.330906,    0.933198,   -0.140157,
 						 0.0775163,   -0.174902,    -0.98153)
 
+	pos2 = PyKDL.Vector(-0.0972128,  -0.0170138,   -0.106974)
+	sideways = PyKDL.Rotation(  -0.453413,    0.428549,   -0.781513,
+     							-0.17203,    0.818259,    0.548505,
+     							0.874541,    0.383143,   -0.297286)
+
 	""" Move to arbitrary start position (near upper left corner) & release anything gripper is
 	holding. """
-	home(psm2, pos, rot)
+	home(psm2, pos2, sideways)
 	
 	""" Get PSM and endoscope calibration data (25 corresponding chess points) """
 	psm2_calibration_data = list(transform.load_all('utils/psm2_recordings.txt'))
