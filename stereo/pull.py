@@ -109,6 +109,6 @@ if __name__ == '__main__':
 	pprint.pprint(needle_to_psm2)
 
 	""" Move to needle centers, pcik them up, and release them """
-	pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
+	# pull(psm2, needle_to_psm2.tolist(), z_upper, z_lower)
 
-	home(psm2, pos2, rot)
+	# home(psm2, pos2, rot)

@@ -86,7 +86,9 @@ if __name__ == '__main__':
 
     world = generate_world()
 
+
     psm2_data = list(load_all('psm2_recordings.txt'))
+    pprint.pprint(psm2_data)
     psm2_matrix = fit_to_plane(psm_data_to_matrix(psm2_data))
 
     endoscope_matrix = np.matrix(list(read_camera.load_all('../camera_data/endoscope_chesspts.p'))[0])
