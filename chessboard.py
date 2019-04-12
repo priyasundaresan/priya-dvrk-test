@@ -93,7 +93,7 @@ class ChessDetector:
             self.left_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             scipy.misc.imsave('camera_data/left_checkerboard.jpg', self.left_image)
             scipy.misc.imsave('camera_data/right_checkerboard.jpg', self.right_image)
-        if self.right_image != None:
+        if self.right_image is not None:
             self.process_image()
     
     def get_points_3d(self, left_points, right_points):
